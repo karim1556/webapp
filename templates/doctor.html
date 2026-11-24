@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Expert Dashboard | Neurosync AI{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>{% if patient %}<p class="eyebrow">Expert Dashboard</p>{% endif %}<h1 class="page-title">{{ patient.username if patient else 'Expert Dashboard' }}</h1>
+  <p class="page-sub">{{ ('Wearable ' ~ device_id ~ ' · Last 30 days') if patient else 'Review recordings for your assigned patients.' }}</p></div>
+  {% if patient %}<a class="btn btn-ghost" href="{{ url_for('dashboard.doctor_page') }}">All assigned patients</a>{% endif %}
+</header>
+{% if patient %}
+<section class="chart-card review-section">
+  <h2 class="chart-title">Latest wearable recording</h2>
+  {% if reading %}
+    <p class="page-sub">{{ format_ist(reading.ts) }}</p>
+    <dl class="reading-snapshot">
+      {% for field, label, unit in recording_fields %}
+      <div><dt>{{ label }}</dt><dd>{% if reading[field] is not none %}{{ reading[field] }} {{ unit }}{% else %}—{% endif %}</dd></div>
+      {% endfor %}
+    </dl>
+  {% else %}
+    <p class="page-sub">{{ 'No recordings are available for this device.' if telemetry_available else 'Wearable recordings are temporarily unavailable.' }}</p>
+  {% endif %}
+</section>
+<section class="chart-card review-section">
+  <h2 class="chart-title">Patient-reported pain</h2>
+  {% for report in reports %}
+    <article class="review-entry"><strong>{{ report.pain_rating }} / 10</strong>
+      <time datetime="{{ report.display_time }}">{{ format_ist(report.display_time) }}</time>
+      {% if report.notes %}<p>{{ report.notes }}</p>{% endif %}
+    </article>
+  {% else %}
+    <p class="page-sub">No pain reports in the last 30 days.</p>
+  {% endfor %}
+</section>
+<section class="chart-card review-section">
+  <h2 class="chart-title">Hardware pain stamps</h2>
+  {% for event in events %}
+  <details class="review-entry">
+    <summary>Hardware button · {{ format_ist(event.occurred_at) }}</summary>
+    <dl class="reading-snapshot">
+      {% for field, label, unit in recording_fields %}
+      <div><dt>{{ label }}</dt><dd>{% if event.measurements[field] is not none %}{{ event.measurements[field] }} {{ unit }}{% else %}—{% endif %}</dd></div>
+      {% endfor %}
+    </dl>
+  </details>
+  {% else %}
+    <p class="page-sub">{{ 'No hardware pain stamps received.' if telemetry_available else 'Hardware events are temporarily unavailable.' }}</p>
+  {% endfor %}
+</section>
+{% else %}
+{% if archive_patients %}
+<section class="chart-grid-2" aria-label="Patient recordings">
+  {% for entry in archive_patients %}
+  <article class="chart-card review-section">
+    <h2 class="chart-title">Patient {{ entry.patient_id }}</h2>
+    <p class="page-sub">{{ entry.profile.sex }} · Born {{ entry.profile.birth_year }} · {{ "{:,}".format(entry.sample_count) }} readings</p>
+    <a class="auth-link" href="{{ url_for('dashboard.doctor_patient', subject=entry.subject) }}">View {{ entry.patient_id }} recordings →</a>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+{% if patients or not archive_patients %}
+<section class="chart-card review-section">
+  {% for entry in patients %}
+  <div class="review-entry"><a class="auth-link" href="{{ url_for('dashboard.doctor_patient', subject=entry.supabase_id) }}">{{ entry.username }} →</a></div>
+  {% else %}
+  <p class="page-sub">No patient records are assigned to this account yet.</p>
+  {% endfor %}
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

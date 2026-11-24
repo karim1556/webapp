@@ -1,0 +1,615 @@
+{%- from "brand.html" import brand_mark -%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="description" content="AE490 phantom-limb-pain wearable research prototype — patient-reported diary and experimental sensor monitor"/>
+  <meta name="color-scheme" content="light"/>
+  {% if request.endpoint != "offline" %}<meta name="csrf-token" content="{{ csrf_token() }}"/>{% endif %}
+  <meta name="theme-color" content="#F7F8F6"/>
+  <link rel="manifest" href="{{ url_for('manifest', v='neurosync-1') }}"/>
+
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Neurosync AI"/>
+  <link rel="apple-touch-icon" href="{{ url_for('apple_touch_icon', v='neurosync-1') }}"/>
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32x32.png', v='neurosync-1') }}"/>
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16x16.png', v='neurosync-1') }}"/>
+  <link rel="icon" sizes="16x16 32x32" href="{{ url_for('favicon', v='neurosync-1') }}"/>
+  <link rel="icon" type="image/svg+xml" sizes="any" href="{{ url_for('static', filename='icons/neurosync.svg', v='neurosync-1') }}"/>
+
+  <title>{% block title %}AE490 — Neurosync AI{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='premium-light-1', ui='forest-pain-1') }}"/>
+
+  <script>
+    (function() {
+      if (localStorage.getItem('sidebar_collapsed') === 'true') {
+        document.documentElement.classList.add('sidebar-collapsed');
+      }
+    })();
+  </script>
+
+  <style id="sidebarStyleBlock">
+    :root {
+      --sidebar-w: 240px;
+      --sidebar-w-collapsed: 68px;
+    }
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--sidebar-w);
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: var(--surface);
+      border-right: 1px solid var(--line);
+      color: var(--ink);
+      transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .main-content {
+      margin-left: var(--sidebar-w);
+      width: calc(100% - var(--sidebar-w));
+      transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1), width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Sidebar Logo Header */
+    .sidebar-logo {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      padding: 1.25rem 1rem 1.25rem 1.25rem !important;
+      border-bottom: 1px solid var(--line) !important;
+      min-height: 72px;
+      box-sizing: border-box;
+      gap: 0.5rem;
+    }
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 0;
+      text-decoration: none;
+      color: inherit;
+    }
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .logo-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    .logo-sub {
+      font-size: 0.68rem;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', monospace;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+
+    /* Collapse button (Desktop only) */
+    .sidebar-collapse-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 30px !important;
+      height: 30px !important;
+      border-radius: 8px !important;
+      border: 1px solid var(--line) !important;
+      background: var(--surface-soft) !important;
+      color: var(--muted) !important;
+      cursor: pointer !important;
+      padding: 0 !important;
+      flex-shrink: 0 !important;
+      transition: all 0.18s ease !important;
+    }
+    .sidebar-collapse-btn:hover {
+      background: var(--teal-soft) !important;
+      border-color: rgba(13, 115, 119, 0.3) !important;
+      color: var(--teal) !important;
+      transform: scale(1.05);
+    }
+    .sidebar-collapse-btn svg {
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* User Profile */
+    .sidebar-user {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.1rem 1.25rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .user-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .user-role {
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    /* Nav Items */
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      padding: 1.15rem 0.75rem;
+      flex: 1;
+    }
+    .nav-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.7rem 0.85rem;
+      border-radius: 8px;
+      color: var(--nav-text);
+      text-decoration: none;
+      font-size: 0.84rem;
+      font-weight: 500;
+      transition: all 0.16s ease;
+      cursor: pointer;
+    }
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: #88a09d;
+      transition: color 0.16s ease;
+    }
+    .nav-item:hover {
+      background: var(--surface-soft);
+      color: var(--ink);
+      transform: translateX(2px);
+    }
+    .nav-item.active {
+      background: var(--teal-soft);
+      color: var(--teal);
+      font-weight: 600;
+    }
+    .nav-item.active svg {
+      color: var(--teal);
+    }
+    .nav-item.active::before {
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: 3px;
+      border-radius: 0 3px 3px 0;
+      background: var(--teal);
+      content: '';
+    }
+
+    /* Footer / Logout */
+    .sidebar-footer {
+      padding: 1rem 0.75rem 1.25rem;
+      border-top: 1px solid var(--line);
+    }
+    .logout-btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.68rem 0.85rem;
+      border-radius: 8px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      transition: all 0.16s ease;
+      cursor: pointer;
+    }
+    .logout-btn svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: inherit;
+    }
+    .logout-btn:hover {
+      background: #fbeeed;
+      color: #b9382f;
+      transform: translateX(2px);
+    }
+
+    /* ═══════════════════════════════════════════════
+       COLLAPSED STATE (Desktop icon rail)
+       ═══════════════════════════════════════════════ */
+    html.sidebar-collapsed,
+    body.sidebar-collapsed {
+      --sidebar-w: var(--sidebar-w-collapsed) !important;
+    }
+
+    html.sidebar-collapsed .sidebar-logo,
+    body.sidebar-collapsed .sidebar-logo {
+      padding: 0.9rem 0 !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      align-items: center !important;
+      gap: 0.55rem !important;
+      min-height: auto !important;
+    }
+    html.sidebar-collapsed .sidebar-brand,
+    body.sidebar-collapsed .sidebar-brand {
+      cursor: pointer;
+      justify-content: center;
+    }
+    html.sidebar-collapsed .sidebar-brand .brand-mark,
+    body.sidebar-collapsed .sidebar-brand .brand-mark {
+      margin: 0 auto !important;
+      width: 38px !important;
+      height: 38px !important;
+    }
+    html.sidebar-collapsed .logo-text,
+    body.sidebar-collapsed .logo-text,
+    html.sidebar-collapsed .user-info,
+    body.sidebar-collapsed .user-info,
+    html.sidebar-collapsed .nav-label,
+    body.sidebar-collapsed .nav-label {
+      display: none !important;
+    }
+    html.sidebar-collapsed .sidebar-collapse-btn,
+    body.sidebar-collapsed .sidebar-collapse-btn {
+      margin: 0 auto !important;
+      width: 28px !important;
+      height: 28px !important;
+    }
+    html.sidebar-collapsed .sidebar-collapse-btn svg,
+    body.sidebar-collapsed .sidebar-collapse-btn svg {
+      transform: rotate(180deg) !important;
+    }
+
+    html.sidebar-collapsed .sidebar-user,
+    body.sidebar-collapsed .sidebar-user {
+      padding: 0.85rem 0 !important;
+      justify-content: center !important;
+    }
+    html.sidebar-collapsed .user-avatar,
+    body.sidebar-collapsed .user-avatar {
+      margin: 0 auto !important;
+      width: 36px !important;
+      height: 36px !important;
+    }
+
+    html.sidebar-collapsed .sidebar-nav,
+    body.sidebar-collapsed .sidebar-nav {
+      padding: 0.9rem 0 !important;
+      align-items: center !important;
+      gap: 0.45rem !important;
+    }
+    html.sidebar-collapsed .nav-item,
+    body.sidebar-collapsed .nav-item {
+      width: 44px !important;
+      height: 44px !important;
+      padding: 0 !important;
+      margin: 0 auto !important;
+      justify-content: center !important;
+      align-items: center !important;
+      border-radius: 10px !important;
+      gap: 0 !important;
+      position: relative !important;
+    }
+    html.sidebar-collapsed .nav-item:hover,
+    body.sidebar-collapsed .nav-item:hover {
+      transform: scale(1.08) !important;
+      background: var(--surface-soft) !important;
+      color: var(--teal) !important;
+    }
+    html.sidebar-collapsed .nav-item.active,
+    body.sidebar-collapsed .nav-item.active {
+      background: var(--teal-soft) !important;
+      color: var(--teal) !important;
+      box-shadow: inset 0 0 0 1.5px var(--teal) !important;
+    }
+    html.sidebar-collapsed .nav-item.active::before,
+    body.sidebar-collapsed .nav-item.active::before {
+      display: none !important;
+    }
+    html.sidebar-collapsed .nav-item svg,
+    body.sidebar-collapsed .nav-item svg {
+      width: 20px !important;
+      height: 20px !important;
+      margin: 0 !important;
+    }
+
+    html.sidebar-collapsed .sidebar-footer,
+    body.sidebar-collapsed .sidebar-footer {
+      padding: 0.85rem 0 !important;
+    }
+    html.sidebar-collapsed .logout-btn,
+    body.sidebar-collapsed .logout-btn {
+      width: 44px !important;
+      height: 44px !important;
+      padding: 0 !important;
+      margin: 0 auto !important;
+      justify-content: center !important;
+      align-items: center !important;
+      border-radius: 10px !important;
+      gap: 0 !important;
+      position: relative !important;
+    }
+    html.sidebar-collapsed .logout-btn:hover,
+    body.sidebar-collapsed .logout-btn:hover {
+      transform: scale(1.08) !important;
+    }
+    html.sidebar-collapsed .logout-btn svg,
+    body.sidebar-collapsed .logout-btn svg {
+      width: 18px !important;
+      height: 18px !important;
+      margin: 0 !important;
+    }
+
+    /* Tooltip on hover in collapsed mode */
+    html.sidebar-collapsed .nav-item::after,
+    body.sidebar-collapsed .nav-item::after,
+    html.sidebar-collapsed .logout-btn::after,
+    body.sidebar-collapsed .logout-btn::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: calc(100% + 12px);
+      top: 50%;
+      transform: translateY(-50%);
+      background: #172a2d;
+      color: #ffffff;
+      font-size: 0.74rem;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      padding: 5px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      z-index: 9999;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    }
+    html.sidebar-collapsed .nav-item:hover::after,
+    body.sidebar-collapsed .nav-item:hover::after,
+    html.sidebar-collapsed .logout-btn:hover::after,
+    body.sidebar-collapsed .logout-btn:hover::after {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(-50%) translateX(2px);
+    }
+
+    @media (max-width: 760px) {
+      .sidebar-collapse-btn {
+        display: none !important;
+      }
+      .sidebar {
+        width: 270px !important;
+      }
+      .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+      }
+    }
+  </style>
+
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% if request.blueprint == 'dashboard' and current_user.is_authenticated %}app-shell{% else %}auth-shell{% endif %}{% endblock %}">
+
+<div class="pwa-network-banner" id="pwaNetworkBanner" role="status" aria-live="polite"></div>
+
+{% if request.blueprint == 'dashboard' and current_user.is_authenticated %}
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="sidebar-brand" id="sidebarBrand" title="Neurosync AI AE490">
+      {{ brand_mark(38) }}
+      <div class="logo-text">
+        <span class="logo-title">Neurosync AI</span>
+        <span class="logo-sub">AE490 Monitor</span>
+      </div>
+    </div>
+    <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Toggle sidebar" title="Toggle sidebar">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="3"/>
+        <line x1="9" y1="3" x2="9" y2="21"/>
+        <path d="M14 9l-3 3 3 3"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="sidebar-user">
+    <div class="user-avatar">{{ current_user.username[0].upper() }}</div>
+    <div class="user-info">
+      <span class="user-name">{{ current_user.username }}</span>
+      <span class="user-role">{{ "Expert" if current_user.is_doctor else "Patient" }}</span>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    {% if current_user.is_doctor %}
+    <a href="{{ url_for('dashboard.doctor_page') }}" class="nav-item active" title="Expert Dashboard" data-tooltip="Expert Dashboard">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      <span class="nav-label">Expert Dashboard</span>
+    </a>
+    {% else %}
+    <a href="{{ url_for('dashboard.dashboard_page') }}" class="nav-item {% if request.endpoint == 'dashboard.dashboard_page' %}active{% endif %}" id="nav-dashboard" title="Dashboard" data-tooltip="Dashboard">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span class="nav-label">Dashboard</span>
+    </a>
+    <a href="{{ url_for('dashboard.history_page') }}" class="nav-item {% if request.endpoint == 'dashboard.history_page' %}active{% endif %}" id="nav-history" title="Signal History" data-tooltip="Signal History">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span class="nav-label">Signal History</span>
+    </a>
+    <a href="{{ url_for('dashboard.diary_page') }}" class="nav-item {% if request.endpoint == 'dashboard.diary_page' %}active{% endif %}" id="nav-diary" title="Pain Diary &amp; Trends" data-tooltip="Pain Diary &amp; Trends">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span class="nav-label">Pain Diary &amp; Trends</span>
+    </a>
+    <a href="{{ url_for('dashboard.settings_page') }}" class="nav-item {% if request.endpoint == 'dashboard.settings_page' %}active{% endif %}" id="nav-settings" title="Settings" data-tooltip="Settings">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      <span class="nav-label">Settings</span>
+    </a>
+
+    {% endif %}
+    <button type="button" class="nav-item pwa-install-btn" id="pwaInstallBtn" style="display: none;" title="Install App" data-tooltip="Install App">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      <span class="nav-label">Install App</span>
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <form method="post" action="{{ url_for('auth.logout') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <button type="submit" class="logout-btn" id="btn-logout" title="Sign out" data-tooltip="Sign out">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span class="nav-label">Sign out</span>
+    </button>
+    </form>
+  </div>
+</aside>
+
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<main class="main-content" id="mainContent">
+{% else %}
+<main class="main-content full-width">
+{% endif %}
+
+  {% with messages = get_flashed_messages(with_categories=True) %}
+    {% if messages %}
+      <div class="flash-container" id="flashContainer" role="status">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">
+            <span>{{ message }}</span>
+            <button class="flash-close" onclick="this.parentElement.remove()">×</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<div class="ios-install-modal" id="iosInstallModal" role="dialog" aria-modal="true" aria-labelledby="iosModalTitle">
+  <div class="ios-modal-content">
+    <div class="ios-modal-header">
+      <div class="ios-modal-title-wrap">
+        {{ brand_mark(28) }}
+        <h3 id="iosModalTitle">Install Neurosync AI</h3>
+      </div>
+      <button class="ios-modal-close" id="iosModalClose" aria-label="Close modal">×</button>
+    </div>
+    <p class="ios-modal-sub">Add to your iPhone or iPad Home Screen for fullscreen monitoring and quick access:</p>
+    <ol class="ios-steps">
+      <li class="ios-step-item">
+        <span class="step-num">1</span>
+        <div class="step-text">
+          Tap the <strong>Share</strong> button
+          <svg class="step-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          in Safari's bottom toolbar.
+        </div>
+      </li>
+      <li class="ios-step-item">
+        <span class="step-num">2</span>
+        <div class="step-text">
+          Scroll down and tap <strong>Add to Home Screen</strong>
+          <svg class="step-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>.
+        </div>
+      </li>
+      <li class="ios-step-item">
+        <span class="step-num">3</span>
+        <div class="step-text">
+          Tap <strong>Add</strong> in the top-right corner to finish.
+        </div>
+      </li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const sidebarCollapseBtn = document.getElementById('sidebarCollapseBtn');
+const sidebarBrand = document.getElementById('sidebarBrand');
+
+function toggleSidebarCollapse() {
+  const isNow = !document.documentElement.classList.contains('sidebar-collapsed');
+  document.documentElement.classList.toggle('sidebar-collapsed', isNow);
+  document.body.classList.toggle('sidebar-collapsed', isNow);
+  localStorage.setItem('sidebar_collapsed', isNow ? 'true' : 'false');
+  if (sidebarCollapseBtn) {
+    sidebarCollapseBtn.setAttribute('title', isNow ? 'Expand sidebar' : 'Collapse sidebar');
+  }
+}
+
+if (sidebarCollapseBtn) {
+  sidebarCollapseBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleSidebarCollapse();
+  });
+}
+
+if (sidebarBrand) {
+  sidebarBrand.addEventListener('click', (e) => {
+    if (document.documentElement.classList.contains('sidebar-collapsed')) {
+      e.preventDefault();
+      toggleSidebarCollapse();
+    }
+  });
+}
+
+const sidebarToggle  = document.getElementById('sidebarToggle');
+const sidebar        = document.getElementById('sidebar');
+const overlay        = document.getElementById('sidebarOverlay');
+if (sidebarToggle) {
+  sidebarToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('visible');
+  });
+  overlay.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('visible');
+  });
+}
+
+
+</script>
+<script src="{{ url_for('static', filename='js/pwa.js', v='neurosync-1') }}"></script>
+<script src="{{ url_for('static', filename='js/timezone.js', v='ist-5') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

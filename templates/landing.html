@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "brand.html" import wordmark %}
+{% block title %}Neurosync AI | Wearable research workspace{% endblock %}
+{% block body_class %}landing-shell{% endblock %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css', v='neurosync-1') }}"/>
+{% endblock %}
+
+{% block content %}
+{% set open_href = url_for('dashboard.doctor_page' if current_user.is_doctor else 'dashboard.dashboard_page') if current_user.is_authenticated else url_for('auth.register') %}
+{% set open_label = ('Open Expert Dashboard' if current_user.is_doctor else 'Open dashboard') if current_user.is_authenticated else 'Create an account' %}
+{% set diary_href = url_for('dashboard.doctor_page' if current_user.is_doctor else 'dashboard.diary_page') if current_user.is_authenticated else url_for('auth.login', next='/diary') %}
+<div class="landing-frame" id="top">
+  <header class="landing-masthead">
+    {{ wordmark(url_for('root')) }}
+    <nav class="landing-nav" aria-label="Main navigation">
+      <a href="#monitor">Signal monitor</a>
+      <a href="#diary">Pain diary</a>
+    </nav>
+    {% if current_user.is_authenticated %}
+    <a class="landing-masthead-action" href="{{ open_href }}">Workspace <span aria-hidden="true">↗</span></a>
+    {% else %}
+    <a class="landing-masthead-action" href="{{ url_for('auth.login') }}">Sign in <span aria-hidden="true">↗</span></a>
+    {% endif %}
+  </header>
+
+  <section class="landing-hero" aria-labelledby="landing-title">
+    <div class="landing-hero-copy">
+      <p class="landing-kicker"><span aria-hidden="true"></span> AE490 wearable research</p>
+      <h1 id="landing-title">See the signal.<br/><em>Log the pain.</em></h1>
+      <p class="landing-lede">Follow your wearable readings and record when phantom limb pain occurs. Review both over time in one research workspace.</p>
+      <div class="landing-actions">
+        <a class="landing-button" href="{{ open_href }}">{{ open_label }} <span aria-hidden="true">↗</span></a>
+        <a class="landing-text-link" href="#monitor">Explore the monitor <span aria-hidden="true">↓</span></a>
+      </div>
+    </div>
+    <figure class="landing-hero-figure">
+      <div class="landing-hero-image">
+        <img src="{{ url_for('static', filename='img/landing/prototype.webp') }}" srcset="{{ url_for('static', filename='img/landing/prototype-small.webp') }} 380w, {{ url_for('static', filename='img/landing/prototype.webp') }} 538w" sizes="(max-width: 690px) 91vw, (max-width: 1535px) 48vw, 700px" width="538" height="840" alt="Neurosync AI hardware prototype with a black enclosure, fabric strap, and wired sensors" fetchpriority="high"/>
+      </div>
+      <figcaption><span>Neurosync AI prototype</span><span>Hardware team photograph</span></figcaption>
+    </figure>
+  </section>
+
+  <section class="landing-monitor" id="monitor" aria-labelledby="preview-title">
+    <div class="landing-section-copy">
+      <p class="landing-kicker"><span aria-hidden="true"></span> Signal monitor</p>
+      <h2 id="preview-title">See how your<br/><em>signals change.</em></h2>
+      <p>Review heart rate, oxygen saturation, and other wearable signals together. Signal History keeps the recorded session available for a closer look.</p>
+    </div>
+    <ul class="landing-recorded-signals" aria-label="Recorded wearable measurements">
+      <li>Heart rate</li><li>Heart rate variability</li><li>Oxygen saturation</li><li>Perfusion index</li>
+      <li>Respiration</li><li>Temperature and humidity</li><li>Muscle motion</li><li>Pain Score</li>
+    </ul>
+  </section>
+
+  <section class="landing-diary" id="diary" aria-labelledby="diary-title">
+    <div>
+      <p class="landing-kicker"><span aria-hidden="true"></span> Pain diary</p>
+      <h2 id="diary-title">Make a record<br/><em>in your own words.</em></h2>
+    </div>
+    <div class="landing-diary-copy">
+      <p>Log a check-in or an episode with notes about what you felt. The physical button marks an event in the diary when the wearable uploads it.</p>
+      <a class="landing-text-link" href="{{ diary_href }}">{{ 'Open Expert Dashboard' if current_user.is_authenticated and current_user.is_doctor else 'Open pain diary' }} <span aria-hidden="true">↗</span></a>
+    </div>
+  </section>
+
+  <footer class="landing-footer">
+    {{ wordmark('#top', size=30) }}
+    <a class="landing-text-link" href="{{ url_for('auth.doctor_login') }}">Expert Dashboard <span aria-hidden="true">↗</span></a>
+    <a class="landing-text-link" href="#top">Back to top <span aria-hidden="true">↑</span></a>
+  </footer>
+</div>
+{% endblock %}

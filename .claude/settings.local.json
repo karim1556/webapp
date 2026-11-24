@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 *)",
+      "Bash(/opt/homebrew/bin/python3 -c \"import flask_login; print\\('Homebrew python has flask_login'\\)\")",
+      "Bash(pkill -f \"python3 app.py\")",
+      "Bash(xargs kill -9)",
+      "Bash(ditto -c -k --sequesterRsrc --keepParent \"PhantomLimb.app\" \"PhantomLimb-App-macOS.zip\")",
+      "Bash(cd *)"
+    ]
+  }
+}

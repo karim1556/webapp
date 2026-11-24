@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Live monitor | Neurosync AI{% endblock %}
+{% block body_class %}app-shell dashboard-page{% endblock %}
+{% block head %}{% if has_live_source %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endif %}{% endblock %}
+
+{% block content %}
+<div class="dashboard-topline">
+  <div>
+    <p class="eyebrow">{{ 'Wearable workspace' if has_live_source else current_user.username }}</p>
+    <h1 class="page-title">Live monitor</h1>
+    {% if has_live_source %}<p class="page-sub">Key signals from your wearable, updated as new samples arrive.</p>{% endif %}
+  </div>
+  <div class="dashboard-actions">
+    <a class="device-id-link" href="{{ url_for('dashboard.settings_page') }}">{{ current_user.device_id or 'Select a device' }}</a>
+    <div class="device-status" id="deviceStatus" role="status"><span class="status-dot" id="statusDot"></span><span id="statusText">{{ "Connecting" if has_live_source else "No live device" }}</span></div>
+  </div>
+</div>
+
+<section class="chart-card review-section pain-diary-link" id="monitorState" aria-labelledby="monitorStateTitle">
+  <div>
+    <h2 class="chart-title" id="monitorStateTitle">{{ "Waiting for live readings" if has_live_source else "No live device connected" }}</h2>
+    <p class="page-sub" id="monitorStateMessage" role="status">{{ "This page updates when your wearable sends readings." if has_live_source else "This patient’s recordings are available in Signal History." }}</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('dashboard.history_page') }}">Open Signal History</a>
+</section>
+
+<div id="monitor" data-poll-seconds="{{ poll_seconds }}" data-sample-limit="{{ sample_limit }}" data-live-source="{{ 'true' if has_live_source else 'false' }}">
+  <section class="monitor-status-strip" aria-label="Latest packet">
+    <div><span>Finger contact</span><strong data-field="finger_detected">—</strong></div>
+    <div><span>Hardware SOS</span><strong data-field="button_pressed">—</strong></div>
+    <div><span>Device mode</span><strong data-field="state_label">—</strong></div>
+    <div><span>Last received · IST</span><strong id="lastReceived">—</strong></div>
+  </section>
+
+  <section class="pain-hero" aria-labelledby="painIndexTitle">
+    <div class="pain-hero-reading">
+      <h2 id="painIndexTitle">Pain Score</h2>
+      <div class="monitor-value"><strong data-field="pain_index">—</strong><small>/ 100</small></div>
+      <p class="page-sub" id="assessmentNote">Experimental estimate from wearable signals</p>
+    </div>
+    <figure class="pain-hero-gauge" aria-hidden="true">
+      <canvas id="painIndexGauge" width="560" height="300"></canvas>
+      <figcaption><span>0</span><span>100</span></figcaption>
+    </figure>
+  </section>
+
+  <section class="section-heading monitor-heading">
+    <h2>Latest readings</h2>
+    <p class="monitor-notice" id="readingContract" role="status"></p>
+  </section>
+  <div class="monitor-metrics">
+    {% set metrics = [
+      ('Heart rate', 'bpm', 'heart_rate', 'Raw PPG', 'pulse_raw_adc', 'ADC', 'coral'),
+      ('Oxygen saturation', '%', 'spo2', 'Device status', 'spo2_status', '', 'teal'),
+      ('HRV · RMSSD', 'ms', 'hrv_rmssd', 'SDNN', 'hrv_sdnn', 'ms', 'violet'),
+      ('Respiration', 'breaths/min', 'respiration_rate', 'Method', 'respiration_method', '', 'blue'),
+      ('Perfusion index', '%', 'perfusion_index', 'Blood flow', 'blood_flow_status', '', 'teal'),
+      ('Temperature', '°C', 'temperature_c', 'Humidity', 'humidity_sweat', '%', 'amber'),
+      ('Muscle motion', 'm/s²', 'muscle_spasm_jerk', 'Posture', 'posture_score', '', 'violet')
+    ] %}
+    {% for label, unit, field, detail, detail_field, detail_unit, tone in metrics %}
+    <article class="monitor-metric metric-tone--{{ tone }}">
+      <h3>{{ label }}</h3>
+      <div class="monitor-value"><strong data-field="{{ field }}">—</strong><small>{{ unit }}</small></div>
+      <p>{{ detail }} <strong data-field="{{ detail_field }}"{% if detail_unit %} data-unit="{{ detail_unit }}"{% endif %}>—</strong>
+        {% if field == 'muscle_spasm_jerk' %}<strong data-field="posture_status"></strong>{% endif %}
+      </p>
+    </article>
+    {% endfor %}
+  </div>
+
+  <section class="monitor-trends" aria-labelledby="recentSignals">
+    <div class="section-heading monitor-heading">
+      <div><h2 id="recentSignals">Recent signal trends</h2><p class="page-sub">Latest {{ sample_limit }} received samples · Reading order · Hover or tap for timestamps</p></div>
+      <a class="btn btn-ghost" href="{{ url_for('dashboard.history_page') }}">Signal history →</a>
+    </div>
+    {% with panel_prefix = 'live', panel_empty = 'No live readings' %}{% include "signal_panels.html" %}{% endwith %}
+  </section>
+</div>
+
+{% if has_live_source %}
+<section class="chart-card review-section pain-diary-link">
+  <div><h2 class="chart-title">Patient-reported pain</h2><p class="page-sub">Rate your pain on the 0–10 scale or review hardware pain stamps.</p></div>
+  <a class="btn btn-primary" href="{{ url_for('dashboard.diary_page', _anchor='painReportPanel') }}">Rate your pain</a>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js', v='device-sos-1') }}"></script>
+<script src="{{ url_for('static', filename='js/telemetry-chart.js', v='neurosync-1') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js', v='forest-pain-1') }}"></script>
+{% endblock %}

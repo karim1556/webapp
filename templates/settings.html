@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Settings | Neurosync AI{% endblock %}
+{% block content %}
+<header class="page-header"><div><p class="eyebrow">Workspace</p><h1 class="page-title">Settings</h1><p class="page-sub">Choose a telemetry source and manage your sign-in.</p></div></header>
+<div class="settings-grid">
+  <section class="settings-card">
+    <div class="settings-card-header"><div class="sensor-icon cyan" aria-hidden="true">⌁</div><h2>Wearable source</h2></div>
+    {% if current_user.demo_patient_id %}
+    <p class="settings-desc">This login is assigned to patient {{ current_user.demo_patient_id }}.</p>
+    {% else %}
+    <p class="settings-desc">Enter the <code>device_id</code> sent by your ESP32. Leave it blank to pause telemetry in this workspace.</p>
+    <form method="post" class="auth-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <label class="form-group">Device ID<input class="form-input" name="device_id" value="{{ user.device_id or '' }}" maxlength="64" pattern="[A-Za-z0-9_\-]+" placeholder="e.g. C6525" autocomplete="off"/></label>
+      <button class="btn btn-primary" type="submit">Save device</button>
+    </form>
+    <div class="settings-info-box">Supabase · Refreshes every {{ poll_seconds }} seconds while the dashboard is open</div>
+    {% endif %}
+  </section>
+  <section class="settings-card">
+    <div class="settings-card-header"><div class="sensor-icon cyan" aria-hidden="true">◎</div><h2>Account</h2></div>
+    <dl class="account-info-grid">
+      <div class="account-row"><dt class="account-label">Display name</dt><dd class="account-value">{{ current_user.username }}</dd></div>
+      <div class="account-row"><dt class="account-label">Email</dt><dd class="account-value">{{ user.email }}</dd></div>
+      <div class="account-row"><dt class="account-label">Sign-in provider</dt><dd class="account-value">Supabase Auth</dd></div>
+    </dl>
+    <a class="btn btn-ghost" href="{{ url_for('auth.forgot_password') }}">Reset password</a>
+  </section>
+</div>
+{% endblock %}

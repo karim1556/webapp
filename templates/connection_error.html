@@ -1,0 +1,5 @@
+{% extends "auth_layout.html" %}
+{% block title %}Connection unavailable | Neurosync AI{% endblock %}
+{% block auth_title %}Connection unavailable{% endblock %}
+{% block auth_intro %}{{ message }}{% endblock %}
+{% block auth_form %}<a class="btn btn-primary" href="{{ url_for('auth.login') }}">Return to sign in</a>{% endblock %}

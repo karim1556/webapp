@@ -1,0 +1,7 @@
+{% macro brand_mark(size=34) -%}
+<img class="brand-mark" src="{{ url_for('static', filename='icons/neurosync.svg', v='neurosync-1') }}" width="{{ size }}" height="{{ size }}" alt=""/>
+{%- endmacro %}
+
+{% macro wordmark(href, extra_class='', size=34) -%}
+<a class="brand-wordmark {{ extra_class }}" href="{{ href }}">{{ brand_mark(size) }}<span>Neurosync AI</span></a>
+{%- endmacro %}

@@ -1,0 +1,12 @@
+# Runtime dependencies used by the packaged desktop application.
+# Pins keep the persisted scikit-learn models reproducible across build machines.
+flask==3.1.3
+flask-login==0.6.3
+werkzeug==3.1.8
+requests==2.32.4
+numpy==1.26.4
+pandas==3.0.5
+scikit-learn==1.9.0
+joblib==1.5.3
+pyinstaller==6.22.0
+tzdata

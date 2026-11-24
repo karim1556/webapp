@@ -1,0 +1,15 @@
+{% extends "auth_layout.html" %}
+{% block title %}Create an account | Neurosync AI{% endblock %}
+{% block auth_title %}Create an account{% endblock %}
+{% block auth_intro %}Use an email address you can access. We’ll send a confirmation link.{% endblock %}
+{% block auth_form %}
+<form method="post" class="auth-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+  <label class="form-group">Display name<input class="form-input" name="username" value="{{ username }}" autocomplete="nickname" minlength="3" maxlength="60" required/></label>
+  <label class="form-group">Email<input class="form-input" type="email" name="email" value="{{ email }}" autocomplete="username" required/></label>
+  <label class="form-group">Password<input class="form-input" type="password" name="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required/></label>
+  <label class="form-group">Confirm password<input class="form-input" type="password" name="confirm_password" autocomplete="new-password" minlength="8" required/></label>
+  <button class="btn btn-primary" type="submit">Create account</button>
+</form>
+<p class="auth-form-footer">Already have an account? <a class="auth-link" href="{{ url_for('auth.login') }}">Sign in</a></p>
+{% endblock %}

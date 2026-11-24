@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Pain Diary &amp; Trends — Neurosync AI{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Patient-reported tracking</p>
+    <h1 class="page-title">Pain diary &amp; patterns</h1>
+    <p class="page-sub">Your reports show when pain happens. Wearable signals are shown separately.</p>
+  </div>
+  <div class="header-right">
+    <label class="sr-only" for="trendDays">Trend period</label>
+    <select class="select-input" id="trendDays" aria-label="Trend period">
+      <option value="7">Last 7 days</option>
+      <option value="14" selected>Last 14 days</option>
+      <option value="30">Last 30 days</option>
+      <option value="90">Last 90 days</option>
+    </select>
+    <button class="btn btn-primary" id="togglePainReport" type="button" aria-expanded="false" aria-controls="painReportPanel">
+      <span aria-hidden="true">＋</span> Add pain report
+    </button>
+  </div>
+</div>
+
+<section class="chart-card review-section" id="hardwarePainStamps"
+         {% if current_user.demo_patient_id %}data-archive="true"{% endif %}
+         data-fields='{{ recording_fields | tojson }}' aria-labelledby="hardwareEventsTitle">
+  <h2 class="chart-title" id="hardwareEventsTitle">{{ 'Archived SOS records' if current_user.demo_patient_id else 'Hardware pain stamps' }}</h2>
+  <p class="page-sub">{{ 'SOS markers and recorded measurements from the recording archive.' if current_user.demo_patient_id else 'Press the physical pain button on your wearable. Events uploaded by the device appear here with their timestamp and sensor readings.' }}</p>
+  <div id="hardwareEventsList" role="status">Checking for device events…</div>
+</section>
+
+<section class="pain-diary-intro" aria-labelledby="diaryCadenceTitle">
+  <div>
+    <p class="eyebrow">A 14-day personal baseline</p>
+    <h2 id="diaryCadenceTitle">Log what you feel, when you feel it.</h2>
+    <p>Add a rated check-in or episode when you can. Your reports give context to recorded wearable signals.</p>
+  </div>
+  <div class="pain-diary-cadence" aria-label="Suggested check-in times">
+    <span><b>Morning</b><small>06:00–11:59</small></span>
+    <span><b>Afternoon</b><small>12:00–17:59</small></span>
+    <span><b>Evening</b><small>18:00–23:59</small></span>
+    <span><b>Night</b><small>00:00–05:59</small></span>
+  </div>
+  <p class="pain-diary-footnote">A period with no entry means no report was recorded; it does not mean you were pain-free.</p>
+</section>
+
+<section class="pain-report-panel chart-card" id="painReportPanel" hidden aria-labelledby="painReportTitle">
+  <div class="chart-card-header">
+    <div>
+      <p class="eyebrow">Your own report</p>
+      <h2 class="chart-title" id="painReportTitle">Add a pain report</h2>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="closePainReport" type="button">Close</button>
+  </div>
+
+  <div class="pain-report-modes" role="tablist" aria-label="Report type">
+    <button class="pain-report-mode active" type="button" role="tab" aria-selected="true" data-report-mode="check_in">Quick check-in</button>
+    <button class="pain-report-mode" type="button" role="tab" aria-selected="false" data-report-mode="episode">Pain episode</button>
+  </div>
+
+  <form id="painReportForm" novalidate>
+    <div class="pain-report-form-grid">
+      <div class="form-group">
+        <label class="form-label" for="painRating"><span id="painRatingPrompt">How much pain are you feeling right now?</span> <strong><span id="painRatingValue">0</span> / 10</strong></label>
+        <input class="pain-rating-slider" id="painRating" type="range" min="0" max="10" step="1" value="0" aria-describedby="painScaleHint"/>
+        <div class="vas-ticks" aria-hidden="true">{% for tick in range(11) %}<span>{{ tick }}</span>{% endfor %}</div>
+        <div class="pain-scale-hint" id="painScaleHint"><span>0 · No pain</span><span>10 · Worst you can imagine</span></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="painType">Where do you feel it? <span class="form-hint">Optional</span></label>
+        <select class="select-input" id="painType">
+          <option value="">Prefer not to say</option>
+          <option value="phantom">Phantom limb</option>
+          <option value="residual_limb">Residual limb</option>
+          <option value="both">Both</option>
+          <option value="other">Other</option>
+          <option value="not_sure">Not sure</option>
+        </select>
+      </div>
+
+      <div class="form-group pain-time-field" id="checkInTimeField">
+        <label class="form-label" for="occurredAt">Check-in time</label>
+        <input class="form-input" id="occurredAt" type="datetime-local" required/>
+      </div>
+
+      <div class="form-group pain-episode-time-grid" id="episodeTimeFields" hidden>
+        <div class="form-group">
+          <label class="form-label" for="episodeStartedAt">Episode started</label>
+          <input class="form-input" id="episodeStartedAt" type="datetime-local"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="episodeEndedAt">Episode ended <span class="form-hint">Optional</span></label>
+          <input class="form-input" id="episodeEndedAt" type="datetime-local"/>
+        </div>
+      </div>
+
+      <fieldset class="form-group pain-qualities-field">
+        <legend class="form-label">What did it feel like? <span class="form-hint">Optional</span></legend>
+        <div class="pain-quality-options">
+          <label><input type="checkbox" name="painQuality" value="burning"/> Burning</label>
+          <label><input type="checkbox" name="painQuality" value="electric_shooting"/> Electric / shooting</label>
+          <label><input type="checkbox" name="painQuality" value="cramping"/> Cramping</label>
+          <label><input type="checkbox" name="painQuality" value="tingling"/> Tingling</label>
+          <label><input type="checkbox" name="painQuality" value="aching"/> Aching</label>
+          <label><input type="checkbox" name="painQuality" value="pressure"/> Pressure</label>
+          <label><input type="checkbox" name="painQuality" value="other"/> Other</label>
+        </div>
+      </fieldset>
+
+      <div class="form-group">
+        <label class="form-label" for="painActivity">What were you doing beforehand? <span class="form-hint">Optional</span></label>
+        <input class="form-input" id="painActivity" maxlength="500" placeholder="For example: resting, walking, exercise"/>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="painRelief">Did anything help? <span class="form-hint">Optional</span></label>
+        <input class="form-input" id="painRelief" maxlength="500" placeholder="For example: rest, movement, usual care"/>
+      </div>
+
+      <div class="form-group pain-notes-field">
+        <label class="form-label" for="painNotes">Notes <span class="form-hint">Optional · saved to your account</span></label>
+        <textarea class="form-textarea" id="painNotes" rows="3" maxlength="1000" placeholder="Anything else you want to remember about this report"></textarea>
+      </div>
+    </div>
+
+    <div class="pain-report-submit-row">
+      <p class="form-hint">This is a self-report. Wearable measurements do not fill in pain ratings.</p>
+      <button class="btn btn-primary" id="savePainReport" type="submit">Save report</button>
+    </div>
+    <p class="pain-report-message" id="painReportMessage" role="status" aria-live="polite"></p>
+  </form>
+</section>
+
+<div class="stats-grid pain-diary-stats" aria-label="Patient-reported summary">
+  <div class="stat-card"><div class="stat-icon cyan"><span aria-hidden="true">●</span></div><div class="stat-info"><span class="stat-value" id="reportCount">—</span><span class="stat-label">Diary records</span></div></div>
+  <div class="stat-card"><div class="stat-icon amber"><span aria-hidden="true">↗</span></div><div class="stat-info"><span class="stat-value" id="reportedAverage">—</span><span class="stat-label">Average reported pain · 0–10</span></div></div>
+  <div class="stat-card"><div class="stat-icon red"><span aria-hidden="true">◷</span></div><div class="stat-info"><span class="stat-value" id="episodeCount">—</span><span class="stat-label">Episodes logged</span></div></div>
+  <div class="stat-card"><div class="stat-icon red"><span aria-hidden="true">⌁</span></div><div class="stat-info"><span class="stat-value" id="sosEventCount">—</span><span class="stat-label">Archived button events</span></div></div>
+  <div class="stat-card"><div class="stat-icon purple"><span aria-hidden="true">◷</span></div><div class="stat-info"><span class="stat-value" id="topDaypart">—</span><span class="stat-label">Most logged daypart</span></div></div>
+</div>
+
+<section class="chart-card" aria-labelledby="daypartTitle">
+  <div class="chart-card-header">
+    <div><p class="eyebrow">Self-reported pain</p><h2 class="chart-title" id="daypartTitle">Your reports by time of day</h2></div>
+    <span class="chart-badge cyan" id="reportWindowLabel">Last 14 days</span>
+  </div>
+  <p class="pain-chart-note">Counts include archived button events. Average intensity uses rated reports only.</p>
+  <div class="pain-daypart-grid" id="daypartSummary" aria-live="polite"></div>
+  <div class="pain-daypart-charts">
+    <div><h3>Reports logged</h3><div class="pain-chart-canvas-wrap"><canvas id="daypartCountChart" height="105" aria-label="Patient reports per daypart"></canvas></div></div>
+    <div><h3>Average reported intensity</h3><div class="pain-chart-canvas-wrap"><canvas id="daypartAverageChart" height="105" aria-label="Average self-reported pain by daypart"></canvas></div></div>
+  </div>
+</section>
+
+<section class="chart-card" aria-labelledby="painTimelineTitle">
+  <div class="chart-card-header">
+    <div><p class="eyebrow">Patient timeline</p><h2 class="chart-title" id="painTimelineTitle">Reported intensity over time</h2></div>
+    <span class="chart-badge purple">Self-report · 0–10</span>
+  </div>
+  <p class="pain-chart-note">Rated check-ins and episodes appear on the 0–10 scale. Unrated events retain their timestamps in the records below.</p>
+  <div class="pain-timeline-wrap"><canvas id="painTimelineChart" height="105" aria-label="Patient-reported pain rating over time"></canvas></div>
+</section>
+
+<section class="pain-sensor-section" aria-labelledby="sensorTrendsTitle">
+  <div class="section-heading">
+    <div><p class="eyebrow">Wearable data</p><h2 id="sensorTrendsTitle">Signal changes</h2></div>
+    <span class="data-contract">Sensor signals are not pain reports</span>
+  </div>
+  <p id="diaryTelemetryStatus" class="pain-chart-note" role="status" hidden></p>
+  <p class="pain-chart-note pain-sensor-note">Hourly averages and peaks use Supabase receipt time (IST). Summaries include up to the latest 2,000 readings in the selected period.</p>
+  <div class="chart-grid-2">
+    <section class="chart-card" aria-labelledby="heartTrendTitle">
+      <div class="chart-card-header"><h3 class="chart-title" id="heartTrendTitle">Heart rate</h3><span class="sensor-chip">BPM</span></div>
+      <div class="pain-sensor-chart-wrap"><canvas id="heartTrendChart" height="115" aria-label="Hourly heart-rate average and peak"></canvas></div>
+    </section>
+    <section class="chart-card" aria-labelledby="breathTrendTitle">
+      <div class="chart-card-header"><h3 class="chart-title" id="breathTrendTitle">Breathing rate</h3><span class="sensor-chip">Breaths/min</span></div>
+      <div class="pain-sensor-chart-wrap"><canvas id="breathTrendChart" height="115" aria-label="Hourly breathing-rate average and peak"></canvas></div>
+    </section>
+  </div>
+  <div class="chart-grid-2">
+    <section class="chart-card" aria-labelledby="postureTrendTitle">
+      <div class="chart-card-header"><h3 class="chart-title" id="postureTrendTitle">Posture score</h3><span class="sensor-chip">0–100</span></div>
+      <div class="pain-sensor-chart-wrap pain-sensor-chart-wrap--short"><canvas id="postureTrendChart" height="90" aria-label="Hourly posture average and peak"></canvas></div>
+    </section>
+    <section class="chart-card" aria-labelledby="emgTrendTitle">
+      <div class="chart-card-header"><h3 class="chart-title" id="emgTrendTitle">EMG tone</h3><span class="sensor-chip">Device units</span></div>
+      <div class="pain-sensor-chart-wrap pain-sensor-chart-wrap--short"><canvas id="emgTrendChart" height="90" aria-label="Hourly EMG tone average and peak"></canvas></div>
+    </section>
+  </div>
+</section>
+
+<section class="table-card" aria-labelledby="painReportHistoryTitle">
+  <div class="table-card-header">
+    <div><p class="eyebrow">Patient diary</p><h2 class="chart-title" id="painReportHistoryTitle">Recent reports</h2></div>
+    <span class="chart-badge green" id="reportListCount">0 reports</span>
+  </div>
+  <div class="pain-report-list" id="painReportList" aria-live="polite">
+    <p class="table-loading">Loading your reports…</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/pain-diary.js', v='archive-labels-1') }}"></script>
+{% endblock %}

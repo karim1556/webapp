@@ -1,0 +1,42 @@
+{% set panels = [
+  ('optical', 'Optical pulse', 'points', [('pulse_raw_adc', 'PPG amplitude', 'ADC', '#167b9b')]),
+  ('cardiac', 'Heart rate & HRV', 'line', [('heart_rate', 'Heart rate', 'bpm', '#ba554a'), ('hrv_rmssd', 'HRV RMSSD', 'ms', '#7453a8')]),
+  ('respiration', 'Respiration', 'area', [('respiration_rate', 'Breathing rate', 'breaths/min', '#327da3')]),
+  ('oxygen', 'Oxygen saturation', 'line', [('spo2', 'SpO₂', '%', '#138577')]),
+  ('perfusion', 'Perfusion index', 'line', [('perfusion_index', 'Perfusion index', '%', '#52779f')]),
+  ('environment', 'Temperature & humidity', 'line', [('temperature_c', 'Temperature', '°C', '#a66926'), ('humidity_sweat', 'Humidity', '%', '#327da3')]),
+  ('motion', 'Muscle motion', 'line', [('muscle_spasm_jerk', 'Motion spike', 'm/s²', '#7453a8')]),
+  ('pain', 'Pain Score', 'area', [('pain_index', 'Pain Score', '/ 100', '#a66926')])
+] %}
+<div data-signal-grid>
+  <div class="signal-toolbar">
+    <div class="signal-tabs" role="tablist" aria-label="Signals">
+      <button type="button" role="tab" id="{{ panel_prefix }}-tab-all" aria-controls="{{ panel_prefix }}-plots" aria-selected="true" data-signal-tab="all">Overview</button>
+      {% for key, title, style, series in panels %}
+      <button type="button" role="tab" id="{{ panel_prefix }}-tab-{{ key }}" aria-controls="{{ panel_prefix }}-plots" aria-selected="false" tabindex="-1" data-signal-tab="{{ key }}">{{ title }}</button>
+      {% endfor %}
+    </div>
+    <label class="signal-raw"><input type="checkbox" data-raw-signals/> Show raw readings</label>
+    <p class="page-sub">Optical and breathing trends use a five-reading median. The readings table shows the recorded values.</p>
+  </div>
+  <div class="signal-panel-grid" id="{{ panel_prefix }}-plots" role="tabpanel" aria-labelledby="{{ panel_prefix }}-tab-all" tabindex="0">
+    {% for key, title, style, series in panels %}
+    <section class="chart-card signal-panel" data-signal-panel="{{ key }}" data-series='{{ series | tojson }}' data-plot-style="{{ style }}">
+      <div class="signal-panel-heading">
+        <h3 class="chart-title" id="{{ panel_prefix }}-{{ key }}-title">{{ title }}</h3>
+        <p class="signal-panel-meta" data-panel-meta></p>
+      </div>
+      <div class="signal-panel-legend" aria-label="Chart signals">
+        {% for field, label, unit, color in series %}
+        <span data-legend-field="{{ field }}" style="--series-color: {{ color }}"><i aria-hidden="true"></i>{{ label }} <small>{{ unit }}</small><small data-series-empty hidden> · No readings</small></span>
+        {% endfor %}
+      </div>
+      <div class="signal-panel-plot">
+        <canvas role="img" aria-labelledby="{{ panel_prefix }}-{{ key }}-title" hidden></canvas>
+        <p class="trend-empty">{{ panel_empty|default("Waiting for readings…") }}</p>
+      </div>
+      {% if key == 'optical' %}<p class="signal-panel-caption">ADC samples at the device’s upload cadence.</p>{% endif %}
+    </section>
+    {% endfor %}
+  </div>
+</div>

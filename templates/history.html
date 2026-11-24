@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Signal history | Neurosync AI{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <p class="eyebrow">{{ 'Expert Dashboard' if expert_subject else 'Wearable workspace' }}</p>
+    <h1 class="page-title">{{ 'Patient ' ~ archive_profile.patient_id if expert_subject else 'Signal history' }}</h1>
+    {% if archive_profile %}
+    <p class="page-sub">{{ 'Archived recordings' if expert_subject else 'Patient ' ~ archive_profile.patient_id }}{% if archive_profile.profile.birth_year is defined %} · {{ archive_profile.profile.sex }} · Born {{ archive_profile.profile.birth_year }}{% endif %}</p>
+    {% else %}
+    <p class="page-sub">Received measurements for {{ current_user.device_id or 'your selected wearable' }}.</p>
+    {% endif %}
+  </div>
+  <div class="header-right">
+    {% if expert_subject %}<a class="btn btn-ghost" href="{{ url_for('dashboard.doctor_page') }}">All assigned patients</a>{% endif %}
+    <a class="btn btn-ghost" id="historyExport" href="{{ history_export_url }}" data-history-api="{{ history_api }}" data-sign-in="{{ url_for('auth.doctor_login' if expert_subject else 'auth.login', next=request.path) }}">Download CSV</a>
+    <button class="btn btn-secondary" id="historyRefresh" type="button">Refresh readings</button>
+  </div>
+</header>
+<div class="history-overview">
+  <div>
+    <h2>Wearable measurements</h2>
+    <p class="page-sub">{{ "Daily recordings" if archive_profile else "Up to 500 samples" }} · Reading order · Hover or tap for timestamps</p>
+    <p id="historyStatus" class="history-status" role="status"></p>
+  </div>
+  {% if archive_profile %}
+  <label class="metric-select">Recording date · IST
+    <input class="select-input" id="historyWindow" type="date" min="{{ archive_profile.first_day }}" max="{{ archive_profile.last_day }}" value="{{ archive_profile.last_day }}" required/>
+  </label>
+  {% else %}
+  <label class="metric-select">Time window
+    <select class="select-input" id="historyWindow">
+      <option value="1">Last hour</option><option value="24">Last 24 hours</option><option value="168" selected>Last 7 days</option><option value="720">Last 30 days</option><option value="2160">Last 90 days</option>
+    </select>
+  </label>
+  {% endif %}
+</div>
+{% with panel_prefix = 'history' %}{% include "signal_panels.html" %}{% endwith %}
+<details class="chart-card history-table-card">
+  <summary>Received samples table</summary>
+  <div class="history-table-scroll" tabindex="0" role="region" aria-label="Received samples table">
+    <table class="history-data">
+      <thead><tr><th scope="col">{{ "Recorded" if archive_profile else "Received" }} · IST</th>{% for field, label, unit in recording_fields %}<th scope="col">{{ label }}{% if unit %} · {{ unit }}{% endif %}</th>{% endfor %}<th scope="col">SOS state</th><th scope="col">Pain stamp</th></tr></thead>
+      <tbody id="historyTable" data-fields='{{ recording_fields | map(attribute=0) | list | tojson }}'><tr><td colspan="{{ recording_fields|length + 3 }}">Loading readings…</td></tr></tbody>
+    </table>
+  </div>
+</details>
+  {% if archive_profile %}
+  <details class="chart-card history-table-card">
+    <summary>Daily study summary · {{ archive_profile.daily_summary|length }} days</summary>
+    <div class="history-table-scroll" tabindex="0" role="region" aria-label="Daily study summary">
+      <table class="history-data"><thead><tr><th scope="col">Day</th><th scope="col">Samples</th><th scope="col">Completeness</th><th scope="col">Average pulse</th><th scope="col">Steps</th><th scope="col">SOS presses</th></tr></thead>
+      <tbody>{% for row in archive_profile.daily_summary %}<tr><td>{{ row.day }}</td><td>{{ row.records }}</td><td>{{ row.completeness_pct }}%</td><td>{{ row.avg_hr_bpm }} bpm</td><td>{{ row.total_steps }}</td><td>{{ row.sos_presses }}</td></tr>{% endfor %}</tbody></table>
+    </div>
+  </details>
+  <details class="chart-card history-table-card">
+    <summary>Event log · {{ archive_profile.events|length }} entries</summary>
+    <div class="history-table-scroll" tabindex="0" role="region" aria-label="Event log">
+      <table class="history-data"><thead><tr><th scope="col">Recorded · IST</th><th scope="col">Event</th><th scope="col">Details</th></tr></thead>
+      <tbody>{% for row in archive_profile.events|reverse %}<tr><td>{{ row.timestamp }}</td><td>{{ row.event_type|replace('_', ' ')|lower|capitalize }}</td><td>{{ row.details }}</td></tr>{% endfor %}</tbody></table>
+    </div>
+  </details>
+  {% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js', v='neurosync-1') }}"></script>
+<script src="{{ url_for('static', filename='js/telemetry-chart.js', v='neurosync-1') }}"></script>
+<script src="{{ url_for('static', filename='js/history.js', v='expert-recordings-1') }}"></script>
+{% endblock %}

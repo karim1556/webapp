@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "brand.html" import wordmark %}
+{% block body_class %}auth-shell{% endblock %}
+{% block content %}
+<div class="auth-frame">
+  {{ wordmark(url_for('root'), 'auth-brand') }}
+  <div class="auth-composition">
+    <aside class="auth-aside">
+      <p class="eyebrow">AE490 wearable research</p>
+      <h2>Your wearable.<br/>Your pain diary.</h2>
+      <p>Review live signals and keep a record of when phantom limb pain occurs.</p>
+      <div class="auth-aside-pattern" aria-hidden="true"></div>
+    </aside>
+    <section class="auth-card">
+      <h1 class="auth-form-title">{% block auth_title %}{% endblock %}</h1>
+      <p class="auth-form-sub">{% block auth_intro %}{% endblock %}</p>
+      {% block auth_form %}{% endblock %}
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,543 @@
+{% extends "base.html" %}
+{% block title %}Model & Validation — Neurosync AI{% endblock %}
+{% block body_class %}app-shell validation-page{% endblock %}
+
+{% block head %}
+<style>
+  .val-header {
+    margin-bottom: 2rem;
+  }
+  .val-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .val-kpi-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .val-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .val-kpi-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    color: #64748B;
+    margin-bottom: 0.4rem;
+  }
+  .val-kpi-val {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #0F172A;
+    line-height: 1.1;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .val-kpi-val.accent-blue { color: #2563EB; }
+  .val-kpi-val.accent-green { color: #059669; }
+  .val-kpi-val.accent-purple { color: #7C3AED; }
+  .val-kpi-val.accent-indigo { color: #4F46E5; }
+  .val-kpi-sub {
+    font-size: 0.75rem;
+    color: #94A3B8;
+    margin-top: 0.35rem;
+  }
+
+  /* Navigation Pills / Tabs */
+  .val-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.75rem;
+    border-bottom: 1px solid #E2E8F0;
+    padding-bottom: 0.75rem;
+  }
+  .val-tab-btn {
+    background: #F1F5F9;
+    color: #475569;
+    border: 1px solid #CBD5E1;
+    border-radius: 20px;
+    padding: 0.5rem 1.1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .val-tab-btn:hover {
+    background: #E2E8F0;
+    color: #0F172A;
+  }
+  .val-tab-btn.active {
+    background: #0F172A;
+    color: #FFFFFF;
+    border-color: #0F172A;
+  }
+
+  /* Diagram Cards */
+  .val-panel {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .val-panel.active {
+    display: block;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .val-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    margin-bottom: 2rem;
+  }
+  .val-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .val-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #0F172A;
+    margin: 0;
+  }
+  .val-card-sub {
+    font-size: 0.875rem;
+    color: #64748B;
+    margin: 0.25rem 0 0 0;
+  }
+  .val-download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #F8FAFC;
+    border: 1px solid #CBD5E1;
+    color: #1E293B;
+    padding: 0.5rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.825rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+  .val-download-btn:hover {
+    background: #EEF2FF;
+    border-color: #6366F1;
+    color: #4338CA;
+  }
+  .val-img-container {
+    background: #FAFAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 0.75rem;
+    text-align: center;
+    margin-bottom: 1.25rem;
+    cursor: zoom-in;
+  }
+  .val-img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    display: block;
+    margin: 0 auto;
+  }
+  .val-notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .val-note-box {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  .val-note-box h4 {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin: 0 0 0.4rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .val-note-box p {
+    font-size: 0.825rem;
+    color: #475569;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  /* Modal for zoom */
+  .val-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(4px);
+    justify-content: center;
+    align-items: center;
+    padding: 1.5rem;
+  }
+  .val-modal.active { display: flex; }
+  .val-modal-img {
+    max-width: 95vw;
+    max-height: 92vh;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    background: #FFF;
+  }
+  .val-modal-close {
+    position: absolute;
+    top: 1.5rem;
+    right: 2rem;
+    color: #FFFFFF;
+    font-size: 2.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="val-header">
+  <p class="eyebrow">Neurosync AI / Evaluation &amp; Research</p>
+  <h1 class="page-title">Model Testing, Validation &amp; Results</h1>
+  <p class="page-sub">
+    Rigorous evaluation of the Dual Random Forest pipeline on 1,200 held-out multimodal biosensor samples, 5-fold cross-validation, and closed-loop actuation mechanics.
+  </p>
+</div>
+
+<!-- ═══════════════ TOP KPI CARDS ═══════════════ -->
+<div class="val-kpi-grid">
+  <div class="val-kpi-card">
+    <div class="val-kpi-label">Classification Accuracy</div>
+    <div class="val-kpi-val accent-blue">97.75%</div>
+    <div class="val-kpi-sub">1,173 / 1,200 Correct</div>
+  </div>
+  <div class="val-kpi-card">
+    <div class="val-kpi-label">Pain Recall (Sens.)</div>
+    <div class="val-kpi-val accent-green">96.04%</div>
+    <div class="val-kpi-sub">388 / 404 Episodes</div>
+  </div>
+  <div class="val-kpi-card">
+    <div class="val-kpi-label">Specificity</div>
+    <div class="val-kpi-val accent-indigo">98.62%</div>
+    <div class="val-kpi-sub">785 / 796 Rest Windows</div>
+  </div>
+  <div class="val-kpi-card">
+    <div class="val-kpi-label">Precision</div>
+    <div class="val-kpi-val accent-blue">97.24%</div>
+    <div class="val-kpi-sub">PPV (Pain Class)</div>
+  </div>
+  <div class="val-kpi-card">
+    <div class="val-kpi-label">F1-Score</div>
+    <div class="val-kpi-val accent-purple">0.9664</div>
+    <div class="val-kpi-sub">Harmonic Mean</div>
+  </div>
+  <div class="val-kpi-card">
+    <div class="val-kpi-label">ROC AUC</div>
+    <div class="val-kpi-val accent-green">0.9977</div>
+    <div class="val-kpi-sub">Class Separability</div>
+  </div>
+  <div class="val-kpi-card">
+    <div class="val-kpi-label">Regressor R² Score</div>
+    <div class="val-kpi-val accent-indigo">0.9470</div>
+    <div class="val-kpi-sub">VAS 0–10 Continuity</div>
+  </div>
+  <div class="val-kpi-card">
+    <div class="val-kpi-label">Regressor MAE</div>
+    <div class="val-kpi-val accent-purple">0.325</div>
+    <div class="val-kpi-sub">VAS Unit Deviation</div>
+  </div>
+</div>
+
+<!-- ═══════════════ NAVIGATION TABS ═══════════════ -->
+<div class="val-tabs" role="tablist">
+  <button type="button" class="val-tab-btn active" data-target="tab-cm">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+    Confusion Matrix
+  </button>
+  <button type="button" class="val-tab-btn" data-target="tab-curves">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    Testing &amp; Validation Curves
+  </button>
+  <button type="button" class="val-tab-btn" data-target="tab-dist">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+    Wearable Sensor Distributions
+  </button>
+  <button type="button" class="val-tab-btn" data-target="tab-bayes">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    Feature Importance &amp; Bayes
+  </button>
+  <button type="button" class="val-tab-btn" data-target="tab-actuation">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+    Closed-Loop Actuation
+  </button>
+  <button type="button" class="val-tab-btn" data-target="tab-arch">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6" y2="6"/><line x1="6" y1="18" x2="6" y2="18"/></svg>
+    3-Tier System Architecture
+  </button>
+</div>
+
+<!-- ═══════════════ TAB 1: CONFUSION MATRIX ═══════════════ -->
+<div class="val-panel active" id="tab-cm">
+  <div class="val-card">
+    <div class="val-card-top">
+      <div>
+        <h3 class="val-card-title">Dual Confusion Matrix Evaluation</h3>
+        <p class="val-card-sub">Panel A shows absolute sample counts; Panel B displays normalized true-class proportions.</p>
+      </div>
+      <a href="{{ url_for('static', filename='img/ml_evaluation/confusion_matrix.png') }}" download="confusion_matrix_300dpi.png" class="val-download-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download 300 DPI Figure
+      </a>
+    </div>
+    <div class="val-img-container" onclick="openModal(this)">
+      <img src="{{ url_for('static', filename='img/ml_evaluation/confusion_matrix.png') }}" alt="Confusion Matrix" class="val-img"/>
+    </div>
+    <div class="val-notes-grid">
+      <div class="val-note-box">
+        <h4>Type I Error (False Positive Rate: 1.38%)</h4>
+        <p>Only 11 resting windows out of 796 were misclassified as pain. Maintaining a low False Positive Rate prevents tactile sensory habituation and conserves the 850 mAh battery.</p>
+      </div>
+      <div class="val-note-box">
+        <h4>Type II Error (False Negative Rate: 3.96%)</h4>
+        <p>16 out of 404 acute pain episodes went undetected. With 96.04% Sensitivity, the vast majority of genuine pain occurrences receive prompt therapeutic vibrotactile feedback.</p>
+      </div>
+      <div class="val-note-box">
+        <h4>IEEE Paper Alignment</h4>
+        <p>Matches Section VIII (Evaluation &amp; Results) and Table II. Stratified split maintains identical 33.7% pain class prevalence across both training and test partitions.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB 2: TESTING & VALIDATION SUITE ═══════════════ -->
+<div class="val-panel" id="tab-curves">
+  <div class="val-card">
+    <div class="val-card-top">
+      <div>
+        <h3 class="val-card-title">Comprehensive Testing &amp; Validation Performance Suite</h3>
+        <p class="val-card-sub">ROC, Precision-Recall, Continuous VAS Regression, Residual Error, 5-Fold Cross-Validation, and Calibration Diagram.</p>
+      </div>
+      <a href="{{ url_for('static', filename='img/ml_evaluation/model_performance_curves.png') }}" download="model_performance_curves_300dpi.png" class="val-download-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download 300 DPI Figure
+      </a>
+    </div>
+    <div class="val-img-container" onclick="openModal(this)">
+      <img src="{{ url_for('static', filename='img/ml_evaluation/model_performance_curves.png') }}" alt="Model Performance Curves" class="val-img"/>
+    </div>
+    <div class="val-notes-grid">
+      <div class="val-note-box">
+        <h4>Panel A &amp; B: Discrimination Power</h4>
+        <p>ROC-AUC of 0.9977 and Average Precision of 0.9957 demonstrate near-optimal class separation between resting states and acute pain onset without threshold sensitivity.</p>
+      </div>
+      <div class="val-note-box">
+        <h4>Panel C &amp; D: Continuous Regressor</h4>
+        <p>VAS Regressor achieves R² = 0.947 and MAE = 0.325. Residual error distribution is symmetrically centered around zero (μ = -0.004, σ = 0.410) confirming unbiased estimation.</p>
+      </div>
+      <div class="val-note-box">
+        <h4>Panel E &amp; F: Generalization &amp; Calibration</h4>
+        <p>5-Fold CV yields 96.83% ± 0.51% F1-score across folds, proving absence of fold overfitting. Low Brier score (0.0170) confirms well-calibrated risk probabilities.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB 3: WEARABLE SENSOR DISTRIBUTIONS ═══════════════ -->
+<div class="val-panel" id="tab-dist">
+  <div class="val-card">
+    <div class="val-card-top">
+      <div>
+        <h3 class="val-card-title">Multimodal Wearable Sensor Telemetry Distributions</h3>
+        <p class="val-card-sub">Physiological separation between resting baseline states (blue) and acute pain episodes (red) across all 6 channels.</p>
+      </div>
+      <a href="{{ url_for('static', filename='img/ml_evaluation/wearable_data_distributions.png') }}" download="wearable_distributions_300dpi.png" class="val-download-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download 300 DPI Figure
+      </a>
+    </div>
+    <div class="val-img-container" onclick="openModal(this)">
+      <img src="{{ url_for('static', filename='img/ml_evaluation/wearable_data_distributions.png') }}" alt="Wearable Data Distributions" class="val-img"/>
+    </div>
+    <div class="val-notes-grid">
+      <div class="val-note-box">
+        <h4>Autonomic Response (Heart Rate &amp; HRV)</h4>
+        <p>Pain triggers acute sympathetic excitation, raising Heart Rate (77.8 → 94.9 BPM) and causing sharp parasympathetic withdrawal in HRV RMSSD (62.7 → 39.4 ms).</p>
+      </div>
+      <div class="val-note-box">
+        <h4>Biomechanical Response (EMG &amp; Posture)</h4>
+        <p>Residual muscle clenching manifests as an elevation in EMG RMS (73.5 → 164.3 ADC units) accompanied by compensatory postural guarding (15.9 → 41.0 score).</p>
+      </div>
+      <div class="val-note-box">
+        <h4>Respiratory Alterations (HX710B)</h4>
+        <p>Pain episodes provoke tachypneic breathing (14.2 → 21.9 breaths/min) and shallower tidal volume (0.70 → 0.50 normalized depth proxy).</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB 4: FEATURE IMPORTANCE & BAYESIAN ═══════════════ -->
+<div class="val-panel" id="tab-bayes">
+  <div class="val-card">
+    <div class="val-card-top">
+      <div>
+        <h3 class="val-card-title">Multimodal Channel Diagnostic Contribution &amp; Sensor Correlation</h3>
+        <p class="val-card-sub">Random Forest Gini importance vs. Bayesian prior reliability multipliers and full cross-correlation matrix.</p>
+      </div>
+      <a href="{{ url_for('static', filename='img/ml_evaluation/sensor_feature_importance_and_bayesian.png') }}" download="feature_importance_300dpi.png" class="val-download-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download 300 DPI Figure
+      </a>
+    </div>
+    <div class="val-img-container" onclick="openModal(this)">
+      <img src="{{ url_for('static', filename='img/ml_evaluation/sensor_feature_importance_and_bayesian.png') }}" alt="Feature Importance and Bayesian Fusion" class="val-img"/>
+    </div>
+    <div class="val-notes-grid">
+      <div class="val-note-box">
+        <h4>Bayesian Channel Reliability Layer</h4>
+        <p>Hand-crafted prior multipliers (EMG: 1.25x, Posture: 1.20x, HRV: 1.15x) weight high-specificity biosignals before classification to suppress single-channel motion artifacts.</p>
+      </div>
+      <div class="val-note-box">
+        <h4>Strongest Pain Predictors</h4>
+        <p>Residual limb EMG RMS (r = +0.90) and Posture Anomaly (r = +0.87) demonstrate the highest positive correlation with continuous VAS pain severity.</p>
+      </div>
+      <div class="val-note-box">
+        <h4>Vagal Suppression Metric</h4>
+        <p>HRV RMSSD displays a strong negative correlation (r = -0.91) with VAS pain, serving as an autonomic confirmation channel.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB 5: CLOSED-LOOP ACTUATION ═══════════════ -->
+<div class="val-panel" id="tab-actuation">
+  <div class="val-card">
+    <div class="val-card-top">
+      <div>
+        <h3 class="val-card-title">Closed-Loop Vibrotactile Feedback Transfer Mechanics</h3>
+        <p class="val-card-sub">Proportional PWM intensity mapping and anti-habituation pulsed duty cycle waveform.</p>
+      </div>
+      <a href="{{ url_for('static', filename='img/ml_evaluation/closed_loop_actuation.png') }}" download="closed_loop_actuation_300dpi.png" class="val-download-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download 300 DPI Figure
+      </a>
+    </div>
+    <div class="val-img-container" onclick="openModal(this)">
+      <img src="{{ url_for('static', filename='img/ml_evaluation/closed_loop_actuation.png') }}" alt="Closed-Loop Actuation Mechanics" class="val-img"/>
+    </div>
+    <div class="val-notes-grid">
+      <div class="val-note-box">
+        <h4>Dynamic Activation Threshold</h4>
+        <p>Actuation remains in standby (0 PWM) until P(Pain) &gt;= 0.15. This 15% threshold enables early therapeutic intervention before severe cortical pain circuits lock in.</p>
+      </div>
+      <div class="val-note-box">
+        <h4>Proportional PWM Mapping (160–255)</h4>
+        <p>PWM output scales linearly from 160 (subthreshold mechanoreceptor floor) up to 255 (maximum stimulation ceil) proportionally matching estimated pain severity.</p>
+      </div>
+      <div class="val-note-box">
+        <h4>Pulsed Burst Modulation (400ms ON / 200ms OFF)</h4>
+        <p>Periodic rest intervals prevent sensory receptor fatigue and tactile adaptation while ensuring long battery autonomy (>8.5 hours continuous use).</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB 6: SYSTEM ARCHITECTURE ═══════════════ -->
+<div class="val-panel" id="tab-arch">
+  <div class="val-card">
+    <div class="val-card-top">
+      <div>
+        <h3 class="val-card-title">3-Tier End-to-End System Architecture &amp; Dataflow</h3>
+        <p class="val-card-sub">Wearable Sensing &amp; Actuation → Embedded Edge Processing &amp; ML Core → Cloud Telemetry &amp; Web Platform.</p>
+      </div>
+      <a href="{{ url_for('static', filename='img/ml_evaluation/system_architecture_dataflow.png') }}" download="system_architecture_300dpi.png" class="val-download-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download 300 DPI Figure
+      </a>
+    </div>
+    <div class="val-img-container" onclick="openModal(this)">
+      <img src="{{ url_for('static', filename='img/ml_evaluation/system_architecture_dataflow.png') }}" alt="System Architecture" class="val-img"/>
+    </div>
+    <div class="val-notes-grid">
+      <div class="val-note-box">
+        <h4>Tier 1: Physical Sensing &amp; Actuation</h4>
+        <p>MPU-6050 6-DoF IMU, AD8232 biopotential front-end (residual EMG &amp; ECG), HX710B 24-bit strain gauge, and IRLZ44N MOSFET driving ERM/LRA vibrotactile haptic motors.</p>
+      </div>
+      <div class="val-note-box">
+        <h4>Tier 2: Edge DSP &amp; ML Engine</h4>
+        <p>ESP32 dual-core Xtensa MCU running FreeRTOS with 200Hz sampling, Pan-Tompkins QRS detection, Bayesian prior fusion, and 200-tree dual Random Forest inference.</p>
+      </div>
+      <div class="val-note-box">
+        <h4>Tier 3: Telemetry &amp; Clinical Portal</h4>
+        <p>Supabase stores wearable telemetry and manages authentication. The Flask workspace displays received readings alongside a locally stored pain diary.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal for full-size inspection -->
+<div class="val-modal" id="valModal" onclick="closeModal()">
+  <span class="val-modal-close">&times;</span>
+  <img src="" alt="Enlarged Diagram" class="val-modal-img" id="modalImg"/>
+</div>
+
+<script>
+  // Tab switching logic
+  document.querySelectorAll('.val-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.val-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.val-panel').forEach(p => p.classList.remove('active'));
+      
+      btn.classList.add('active');
+      const targetId = btn.getAttribute('data-target');
+      const targetPanel = document.getElementById(targetId);
+      if (targetPanel) {
+        targetPanel.classList.add('active');
+      }
+    });
+  });
+
+  // Modal zoom
+  function openModal(container) {
+    const img = container.querySelector('img');
+    if (!img) return;
+    const modal = document.getElementById('valModal');
+    const modalImg = document.getElementById('modalImg');
+    modalImg.src = img.src;
+    modal.classList.add('active');
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('valModal');
+    modal.classList.remove('active');
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModal();
+  });
+</script>
+{% endblock %}
