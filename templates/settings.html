@@ -5,17 +5,13 @@
 <div class="settings-grid">
   <section class="settings-card">
     <div class="settings-card-header"><div class="sensor-icon cyan" aria-hidden="true">⌁</div><h2>Wearable source</h2></div>
-    {% if current_user.demo_patient_id %}
-    <p class="settings-desc">This login is assigned to patient {{ current_user.demo_patient_id }}.</p>
-    {% else %}
-    <p class="settings-desc">Enter the <code>device_id</code> sent by your ESP32. Leave it blank to pause telemetry in this workspace.</p>
+    <p class="settings-desc">The default device is <strong>{{ default_device }}</strong>. Enter a different device ID to override it, or clear the field to restore the default.</p>
     <form method="post" class="auth-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-      <label class="form-group">Device ID<input class="form-input" name="device_id" value="{{ user.device_id or '' }}" maxlength="64" pattern="[A-Za-z0-9_\-]+" placeholder="e.g. C6525" autocomplete="off"/></label>
+      <label class="form-group">Device ID<input class="form-input" name="device_id" value="{{ current_user.device_override or '' }}" maxlength="64" pattern="[A-Za-z0-9_\-]+" placeholder="{{ default_device }}" autocomplete="off"/></label>
       <button class="btn btn-primary" type="submit">Save device</button>
     </form>
     <div class="settings-info-box">Supabase · Refreshes every {{ poll_seconds }} seconds while the dashboard is open</div>
-    {% endif %}
   </section>
   <section class="settings-card">
     <div class="settings-card-header"><div class="sensor-icon cyan" aria-hidden="true">◎</div><h2>Account</h2></div>

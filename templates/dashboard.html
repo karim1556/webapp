@@ -8,7 +8,7 @@
   <div>
     <p class="eyebrow">{{ 'Wearable workspace' if has_live_source else current_user.username }}</p>
     <h1 class="page-title">Live monitor</h1>
-    {% if has_live_source %}<p class="page-sub">Key signals from your wearable, updated as new samples arrive.</p>{% endif %}
+    {% if has_live_source %}<p class="page-sub">Latest signals from the selected wearable, updated as new samples arrive.</p>{% endif %}
   </div>
   <div class="dashboard-actions">
     <a class="device-id-link" href="{{ url_for('dashboard.settings_page') }}">{{ current_user.device_id or 'Select a device' }}</a>

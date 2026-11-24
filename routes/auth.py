@@ -12,7 +12,7 @@ from flask import (
 from flask_login import current_user, login_required
 
 import database as db
-from models import demo_patient, doctor_access
+from models import is_expert
 from supabase_backend import SupabaseError, auth
 
 auth_bp = Blueprint("auth", __name__)
@@ -53,9 +53,7 @@ def _clear_sessions():
 
 
 def _remember(payload, *, recovery=False, persistent=False):
-    user_id = None if recovery else db.link_supabase_user(
-        payload["user"], demo_patient(payload["user"]) or (current_app.config["DEFAULT_DEVICE"] if doctor_access(payload["user"]) is None else None)
-    )
+    user_id = None if recovery else db.link_supabase_user(payload["user"])
     _clear_sessions()
     handle = secrets.token_urlsafe(32)
     duration = 900 if recovery else 30 * 86400 if persistent else 86400
@@ -119,7 +117,7 @@ def _login(doctor_portal):
         try:
             payload = auth("token", params={"grant_type": "password"},
                            body={"email": email, "password": request.form.get("password", "")})
-            is_doctor = doctor_access(payload["user"]) is not None
+            is_doctor = is_expert(payload["user"])
             if doctor_portal and not is_doctor:
                 auth("logout", token=payload["access_token"], params={"scope": "local"})
                 flash("This account does not have expert access.", "error")

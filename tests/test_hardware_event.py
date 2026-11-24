@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
 
-from models import doctor_access
+from models import is_expert
 from supabase_backend import button_events_in_samples, hardware_events, normalize
 
 
@@ -49,14 +49,9 @@ class HardwareEventTests(unittest.TestCase):
         self.assertEqual(events[0]["measurements"]["pain_index"], 10)
 
     def test_editable_profile_cannot_enable_clinician_role(self):
-        self.assertIsNone(doctor_access({"user_metadata": {"neurosync_doctor": True}}))
-        self.assertEqual(doctor_access({"app_metadata": {"neurosync_doctor": True}}), {})
-        subject = "987121fb-0e14-44f0-b603-f672e512f206"
-        access = doctor_access({"app_metadata": {
-            "neurosync_doctor": True,
-            "neurosync_patients": [{"user_id": subject, "device_id": "C6525"}, {"user_id": "bad", "device_id": "C6525"}],
-        }})
-        self.assertEqual(access, {subject: "C6525"})
+        self.assertFalse(is_expert({"user_metadata": {"neurosync_doctor": True}}))
+        self.assertFalse(is_expert({"app_metadata": {"neurosync_doctor": "true"}}))
+        self.assertTrue(is_expert({"app_metadata": {"neurosync_doctor": True}}))
 
 
 if __name__ == "__main__":

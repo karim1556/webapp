@@ -17,7 +17,7 @@ Open [Neurosync AI](http://127.0.0.1:5000) and sign in with a Supabase Auth acco
 | `SUPABASE_ADMIN_KEY` | Server-only secret for reviewing assigned archived patients |
 | `SECRET_KEY` | Stable random Flask signing key |
 | `PHANTOMLIMB_ORIGIN` | App origin used in confirmation and reset links. Defaults to Render's external URL on Render. |
-| `PHANTOMLIMB_DEFAULT_DEVICE` | Initial device selection for new profiles. Defaults to `C6525`. |
+| `PHANTOMLIMB_DEFAULT_DEVICE` | Shared Live Monitor device. Defaults to `C6525`. |
 
 In Supabase **Authentication → URL Configuration**, allow both callbacks for your app origin. For the development server they are:
 
@@ -45,7 +45,7 @@ VALUES ('REPLACE-WITH-AUTH-USER-UUID', 'C6525')
 ON CONFLICT DO NOTHING;
 ```
 
-Choosing a device ID in Settings filters the dashboard. The Supabase policy determines whether that account can read the device. The compatibility ingestion policy still accepts anonymous inserts. Use device-specific ingestion credentials before relying on readings from a shared project.
+Patients start on the shared `C6525` feed. Enter a different device ID in Settings to use another wearable, or clear the field to restore the shared feed. The Supabase policy controls which device readings an account can access. The compatibility ingestion policy still accepts anonymous inserts. Use device-specific ingestion credentials before relying on readings from a shared project.
 
 ## Physical button events
 
@@ -55,18 +55,15 @@ The first uploaded `1` of a press creates a pain stamp using the Supabase receip
 
 ## Expert Dashboard
 
-A Supabase administrator sets expert roles and patient assignments in the account’s Auth **app metadata**. Use the patient’s Supabase Auth UUID and the device identifier for each assignment. Experts sign in at `/expert/login`.
+A Supabase administrator enables an expert account by setting the following value in its Auth **app metadata**. Experts sign in at `/expert/login`.
 
 ```json
 {
-  "neurosync_doctor": true,
-  "neurosync_patients": [
-    { "user_id": "REPLACE-WITH-PATIENT-AUTH-UUID", "device_id": "C6525" }
-  ]
+  "neurosync_doctor": true
 }
 ```
 
-For live devices, the patient must have signed in once to link their diary. Grant the expert’s Auth UUID access through the Supabase device policy above. For archived patient IDs P001–P003, the Flask server checks the assignment against the archive owner before reading from the two archive tables. Set `SUPABASE_ADMIN_KEY` in the server environment or private local `.env` to enable those expert archive reads. Keep the admin and Postgres credentials on the server. Have experts sign back in after editing a role or assignment. [Supabase guidance on trusted app metadata](https://supabase.com/docs/guides/database/postgres/row-level-security#authjwt)
+Experts can open all patient accounts, including accounts created before their first sign-in and the three archived profiles P001–P003. Live telemetry is shared by accounts using the same device ID. Diary reports belong to individual accounts. Set `SUPABASE_ADMIN_KEY` on the server to enable expert archive reads. [Supabase guidance on trusted app metadata](https://supabase.com/docs/guides/database/postgres/row-level-security#authjwt)
 
 ## Synthetic patient archive
 

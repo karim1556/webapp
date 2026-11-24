@@ -1,7 +1,7 @@
 {% extends "auth_layout.html" %}
 {% block title %}{{ 'Expert Dashboard' if doctor_portal else 'Sign in' }} | Neurosync AI{% endblock %}
 {% block auth_title %}{{ 'Expert Dashboard' if doctor_portal else 'Sign in' }}{% endblock %}
-{% block auth_intro %}{{ 'Sign in to review your assigned patients.' if doctor_portal else 'Open your wearable research workspace.' }}{% endblock %}
+{% block auth_intro %}{{ 'Sign in to review patient recordings.' if doctor_portal else 'Open your wearable research workspace.' }}{% endblock %}
 {% block auth_form %}
 {% if switch_account %}
 <form method="post" action="{{ url_for('auth.logout') }}">

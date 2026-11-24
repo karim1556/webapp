@@ -1,6 +1,5 @@
 """Neurosync AI Flask application."""
 
-import json
 import os
 import secrets
 from datetime import timedelta
@@ -47,7 +46,7 @@ def create_app():
     def load_user(_request):
         record = session_record()
         user = db.get_user_by_id(record["user_id"]) if record and record["user_id"] else None
-        return User(user, json.loads(record["assigned_patients"] or "null"), record["demo_patient_id"]) if user else None
+        return User(user, app.config["DEFAULT_DEVICE"]) if user else None
 
     @login_manager.unauthorized_handler
     def unauthorized():

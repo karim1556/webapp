@@ -215,7 +215,9 @@ CREATE POLICY "Read assigned device telemetry"
 ON public.phantom_limb_telemetry
 FOR SELECT TO authenticated
 USING (
-    EXISTS (
+    device_id = 'C6525'
+    OR (SELECT auth.jwt())->'app_metadata'->'neurosync_doctor' = 'true'::jsonb
+    OR EXISTS (
         SELECT 1 FROM public.phantom_limb_device_access AS assignment
         WHERE assignment.user_id = (SELECT auth.uid())
           AND assignment.device_id = phantom_limb_telemetry.device_id

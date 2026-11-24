@@ -5,45 +5,32 @@ from flask_login import UserMixin
 
 
 class User(UserMixin):
-    """Wraps a SQLite row dict for Flask-Login."""
+    """Wraps an app profile and trusted Auth metadata for Flask-Login."""
 
-    def __init__(self, row: dict, assigned_patients=None, demo_patient_id=None):
-        self.assigned_patients = assigned_patients
-        self.is_doctor = assigned_patients is not None
+    def __init__(self, row: dict, default_device):
+        identity = {"app_metadata": row.get("app_metadata")}
+        self.is_doctor = is_expert(identity)
+        demo_patient_id = demo_patient(identity)
         self.id               = row["id"]
         self.username         = f"Patient {demo_patient_id}" if demo_patient_id else row["username"]
         self.email            = row["email"]
         self.demo_patient_id  = demo_patient_id
-        self.device_id        = demo_patient_id or row.get("device_id")
+        self.device_override  = device_override(row.get("device_id"), demo_patient_id)
+        self.device_id        = self.device_override or default_device
         self.created_at       = row.get("created_at")
 
     def get_id(self):
         return str(self.id)
 
 
-def doctor_access(identity):
-    """Return an administrator-managed mapping, or None for a patient account."""
-    import re
-    from uuid import UUID
-
+def is_expert(identity):
     metadata = (identity or {}).get("app_metadata") or {}
-    if metadata.get("neurosync_doctor") is not True:
-        return None
-    assignments = metadata.get("neurosync_patients")
-    if not isinstance(assignments, list):
-        return {}
-    result = {}
-    for assignment in assignments[:100]:
-        if not isinstance(assignment, dict):
-            continue
-        try:
-            subject = str(UUID(str(assignment.get("user_id"))))
-        except ValueError:
-            continue
-        device = assignment.get("device_id")
-        if isinstance(device, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", device):
-            result[subject] = device
-    return result
+    return metadata.get("neurosync_doctor") is True
+
+
+def device_override(value, archive_id=None):
+    # Archived accounts previously stored the history identifier as a device ID.
+    return value if value != archive_id else None
 
 
 def demo_patient(identity):

@@ -75,17 +75,12 @@ def profile(patient_id, token):
     return rows[0] if rows else None
 
 
-def expert_profiles(assignments, *, details=False):
-    """Read only ready archives with a matching patient ID and Supabase owner."""
-    owners = {device: subject for subject, device in assignments.items() if device in PATIENT_IDS}
-    if not owners:
-        return []
-    select = PROFILE_SELECT if details else "patient_id,profile,sample_count"
-    pairs = ",".join(f"and(patient_id.eq.{patient_id},owner_id.eq.{owner})"
-                     for patient_id, owner in owners.items())
-    return _request("GET", "/rest/v1/neurosync_demo_patients", expert_archive=True, params={
-        "or": f"({pairs})", "ready": "eq.true", "select": select, "order": "patient_id.asc",
-    })
+def expert_profiles(owner_id=None):
+    filters = {"ready": "eq.true", "order": "patient_id.asc",
+               "select": PROFILE_SELECT if owner_id else "patient_id,owner_id,profile,sample_count"}
+    if owner_id:
+        filters.update(owner_id=f"eq.{owner_id}", limit=1)
+    return _request("GET", "/rest/v1/neurosync_demo_patients", expert_archive=True, params=filters)
 
 
 def normalize_sample(row):

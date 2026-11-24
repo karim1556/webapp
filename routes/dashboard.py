@@ -32,6 +32,7 @@ def restrict_doctor_workspace():
         if request.endpoint == "dashboard.dashboard_page":
             return redirect(url_for("dashboard.doctor_page"))
         if request.endpoint not in {"dashboard.doctor_page", "dashboard.doctor_patient",
+                                    "dashboard.expert_history_page",
                                     "dashboard.expert_history_data", "dashboard.expert_history_export"}:
             abort(403)
 
@@ -42,37 +43,18 @@ def restrict_doctor_workspace():
 def doctor_page():
     if not current_user.is_doctor:
         abort(403)
-    assignments = current_user.assigned_patients
-    archive_patients = archive.expert_profiles(assignments)
-    archive_subjects = {device: subject for subject, device in assignments.items() if device in archive.PATIENT_IDS}
-    for patient in archive_patients:
-        patient["subject"] = archive_subjects[patient["patient_id"]]
-    live_subjects = [subject for subject, device in assignments.items() if device not in archive.PATIENT_IDS]
-    return render_template("doctor.html", patients=db.get_assigned_users(live_subjects), archive_patients=archive_patients)
+    return render_template("doctor.html", patients=db.get_live_patients(), archive_patients=archive.expert_profiles())
 
 
 @dash_bp.get("/doctor/patients/<uuid:subject>")
 @dash_bp.get("/expert/patients/<uuid:subject>")
 @login_required
 def doctor_patient(subject):
-    if not current_user.is_doctor:
-        abort(403)
-    subject = str(subject)
-    device_id = current_user.assigned_patients.get(subject)
-    if device_id is None:
-        abort(404)
-    if device_id in archive.PATIENT_IDS:
-        return render_template(
-            "history.html", recording_fields=RECORDING_FIELDS, format_ist=_format_ist,
-            archive_profile=_expert_archive_profile(subject), expert_subject=subject,
-            history_api=url_for("dashboard.expert_history_data", subject=subject),
-            history_export_url=url_for("dashboard.expert_history_export", subject=subject),
-        )
-    patients = db.get_assigned_users([subject])
-    if not patients:
-        abort(404)
-    patient = patients[0]
-    reports = db.get_pain_reports(patient["id"], days=30)
+    patient, archived = _expert_patient(subject)
+    if archived:
+        return _render_expert_history(subject, patient, archived)
+    device_id = _patient_device(patient)
+    reports = db.get_pain_reports(patient["id"], days=30) if patient["id"] is not None else []
     since = datetime.now(timezone.utc) - timedelta(days=30)
     try:
         token = session_record()["access_token"]
@@ -83,7 +65,7 @@ def doctor_patient(subject):
         recent, events, telemetry_available = [], [], False
     for report in reports:
         report["display_time"] = _db_time_as_iso(report["occurred_at_utc"])
-    return render_template("doctor.html", patient=patient, device_id=device_id,
+    return render_template("doctor.html", patient=patient, device_id=device_id, subject=subject,
                            reports=reports, reading=recent[0] if recent else None,
                            events=events, telemetry_available=telemetry_available,
                            recording_fields=RECORDING_FIELDS, format_ist=_format_ist)
@@ -102,7 +84,7 @@ def dashboard_page():
         "dashboard.html",
         poll_seconds=config.TELEMETRY_POLL_SECONDS,
         sample_limit=LIVE_SAMPLE_LIMIT,
-        has_live_source=not current_user.demo_patient_id,
+        has_live_source=True,
     )
 
 
@@ -134,8 +116,6 @@ def validation_page():
 @login_required
 def settings_page():
     if request.method == "POST":
-        if current_user.demo_patient_id:
-            abort(403)
         if "device_id" not in request.form:
             abort(400)
         device_id = request.form.get("device_id", "").strip()
@@ -147,7 +127,7 @@ def settings_page():
         return redirect(url_for("dashboard.settings_page"))
     return render_template(
         "settings.html", user=db.get_user_by_id(current_user.id),
-        poll_seconds=config.TELEMETRY_POLL_SECONDS,
+        poll_seconds=config.TELEMETRY_POLL_SECONDS, default_device=current_app.config["DEFAULT_DEVICE"],
     )
 
 
@@ -156,14 +136,28 @@ def _archive_profile():
     return _profile_dates(info)
 
 
-def _expert_archive_profile(subject):
+def _expert_patient(subject):
     if not current_user.is_doctor:
         abort(403)
-    device = current_user.assigned_patients.get(str(subject))
-    if device not in archive.PATIENT_IDS:
-        abort(404)
-    rows = archive.expert_profiles({str(subject): device}, details=True)
-    return _profile_dates(rows[0] if rows else None)
+    patients = db.get_live_patients(str(subject))
+    if patients:
+        return patients[0], None
+    rows = archive.expert_profiles(str(subject))
+    return None, _profile_dates(rows[0] if rows else None)
+
+
+def _patient_device(patient):
+    return patient["device_id"] or current_app.config["DEFAULT_DEVICE"]
+
+
+def _render_expert_history(subject, patient, archived):
+    return render_template(
+        "history.html", recording_fields=RECORDING_FIELDS, format_ist=_format_ist,
+        archive_profile=archived, expert_subject=subject, expert_patient=patient,
+        history_device=_patient_device(patient) if patient else None,
+        history_api=url_for("dashboard.expert_history_data", subject=subject),
+        history_export_url=url_for("dashboard.expert_history_export", subject=subject),
+    )
 
 
 def _profile_dates(info):
@@ -184,10 +178,15 @@ def _telemetry(**filters):
 def _history_rows(limit):
     if current_user.demo_patient_id:
         return _archive_history_rows(_archive_profile(), session_record()["access_token"])
+    return _wearable_history_rows(current_user.device_id, limit)
+
+
+def _wearable_history_rows(device_id, limit):
+    token = session_record()["access_token"]
     hours = max(1, min(request.args.get("hours", 168, type=int), 2160))
     now = datetime.now(timezone.utc)
-    samples = _telemetry(limit=limit, since=now - timedelta(hours=hours), until=now)
-    return score_readings(button_events_in_samples(samples, current_user.device_id, session_record()["access_token"]))
+    samples = telemetry(device_id, token, limit=limit, since=now - timedelta(hours=hours), until=now)
+    return score_readings(button_events_in_samples(samples, device_id, token))
 
 
 def _archive_history_rows(info, token=None, *, expert_archive=False):
@@ -218,11 +217,8 @@ def telemetry_error(error):
 @login_required
 def api_live():
     device_id = current_user.device_id
-    if current_user.demo_patient_id:
-        return jsonify(status="no_live_source", device_id=device_id, fresh=False, samples=[])
-
     limit = max(1, min(request.args.get("limit", 1, type=int), LIVE_SAMPLE_LIMIT))
-    samples = _telemetry(limit=limit)
+    samples = telemetry(device_id, session_record()["access_token"], limit=limit)
     if not samples:
         return jsonify(status="no_data", device_id=device_id, fresh=False, samples=[])
 
@@ -257,7 +253,7 @@ def api_live():
 @login_required
 def api_history():
     limit = max(1, min(request.args.get("limit", 500, type=int), 500))
-    return jsonify(status="ok", data=_history_rows(limit), device_id=current_user.device_id)
+    return jsonify(status="ok", data=_history_rows(limit), device_id=current_user.demo_patient_id or current_user.device_id)
 
 
 @dash_bp.get("/history.csv")
@@ -269,14 +265,27 @@ def history_export():
 @dash_bp.get("/expert/patients/<uuid:subject>/recordings")
 @login_required
 def expert_history_data(subject):
-    info = _expert_archive_profile(subject)
-    return jsonify(status="ok", device_id=info["patient_id"], data=_archive_history_rows(info, expert_archive=True))
+    patient, archived = _expert_patient(subject)
+    if archived:
+        return jsonify(status="ok", device_id=archived["patient_id"], data=_archive_history_rows(archived, expert_archive=True))
+    device = _patient_device(patient)
+    limit = max(1, min(request.args.get("limit", 500, type=int), 500))
+    return jsonify(status="ok", device_id=device, data=_wearable_history_rows(device, limit))
 
 
 @dash_bp.get("/expert/patients/<uuid:subject>/recordings.csv")
 @login_required
 def expert_history_export(subject):
-    return _history_csv(_archive_history_rows(_expert_archive_profile(subject), expert_archive=True))
+    patient, archived = _expert_patient(subject)
+    rows = (_archive_history_rows(archived, expert_archive=True) if archived
+            else _wearable_history_rows(_patient_device(patient), 500))
+    return _history_csv(rows)
+
+
+@dash_bp.get("/expert/patients/<uuid:subject>/history")
+@login_required
+def expert_history_page(subject):
+    return _render_expert_history(subject, *_expert_patient(subject))
 
 
 def _history_csv(rows):

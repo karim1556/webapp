@@ -9,7 +9,6 @@ from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row
 
 import config
-from models import demo_patient, doctor_access
 
 
 def get_db():
@@ -28,7 +27,7 @@ def get_db():
     return conn
 
 
-def link_supabase_user(identity, default_device):
+def link_supabase_user(identity):
     subject = identity["id"]
     email = identity["email"].strip().lower()
     metadata = identity.get("user_metadata") or {}
@@ -50,15 +49,19 @@ def link_supabase_user(identity, default_device):
             suffix += 1
             username = f"{name} {suffix}"
         cursor = conn.execute(
-            "INSERT INTO users (username, email, supabase_id, device_id) VALUES (%s, %s, %s, %s) RETURNING id",
-            (username, email, subject, default_device),
+            "INSERT INTO users (username, email, supabase_id) VALUES (%s, %s, %s) RETURNING id",
+            (username, email, subject),
         )
         return cursor.fetchone()["id"]
 
 
 def get_user_by_id(user_id):
     with closing(get_db()) as conn:
-        row = conn.execute("SELECT * FROM users WHERE id=%s", (user_id,)).fetchone()
+        row = conn.execute(
+            """SELECT u.*, a.raw_app_meta_data AS app_metadata
+               FROM users AS u JOIN auth.users AS a ON a.id::text=u.supabase_id
+               WHERE u.id=%s""", (user_id,),
+        ).fetchone()
         return dict(row) if row else None
 
 
@@ -67,20 +70,21 @@ def update_device_id(user_id, device_id):
         conn.execute("UPDATE users SET device_id=%s WHERE id=%s", (device_id, user_id))
 
 
-def get_assigned_users(subjects):
-    if not subjects:
-        return []
-    where = ", ".join("%s" for _ in subjects)
+def get_live_patients(subject=None):
+    """List regular Auth accounts, including people who have never signed in."""
     with closing(get_db()) as conn:
-        return [dict(row) for row in conn.execute(
-            f"SELECT id, username, supabase_id FROM users WHERE supabase_id IN ({where}) ORDER BY username",
-            tuple(subjects),
-        )]
-
-
-def _assigned_patients(payload):
-    access = doctor_access(payload.get("user"))
-    return json.dumps(access) if access is not None else None
+        return conn.execute(
+            """SELECT a.id::text AS supabase_id, u.id, u.device_id,
+                      COALESCE(u.username, NULLIF(a.raw_user_meta_data->>'username', ''),
+                               NULLIF(split_part(a.email, '@', 1), ''), 'Patient') AS username
+               FROM auth.users AS a
+               LEFT JOIN users AS u ON u.supabase_id=a.id::text
+               WHERE a.raw_app_meta_data->'neurosync_doctor' IS DISTINCT FROM 'true'::jsonb
+                 AND COALESCE(a.raw_app_meta_data->>'neurosync_demo_patient', '') NOT IN ('P001', 'P002', 'P003')
+                 AND (%s::uuid IS NULL OR a.id=%s::uuid)
+               ORDER BY username, a.id""",
+            (subject, subject),
+        ).fetchall()
 
 
 def save_auth_session(session_id, user_id, payload, valid_until):
@@ -88,10 +92,10 @@ def save_auth_session(session_id, user_id, payload, valid_until):
         conn.execute("DELETE FROM auth_sessions WHERE valid_until <= %s", (time.time(),))
         conn.execute(
             """INSERT INTO auth_sessions
-               (id, user_id, access_token, refresh_token, expires_at, valid_until, assigned_patients, demo_patient_id)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+               (id, user_id, access_token, refresh_token, expires_at, valid_until)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
             (session_id, user_id, payload["access_token"], payload["refresh_token"],
-             time.time() + payload.get("expires_in", 3600), valid_until, _assigned_patients(payload), demo_patient(payload.get("user"))),
+             time.time() + payload.get("expires_in", 3600), valid_until),
         )
 
 
@@ -116,10 +120,9 @@ def refresh_auth_session(session_id, refresh_token, refresh):
             return dict(row)
         payload = refresh(refresh_token)
         conn.execute(
-            """UPDATE auth_sessions SET access_token=%s, refresh_token=%s, expires_at=%s,
-               assigned_patients=%s, demo_patient_id=%s WHERE id=%s""",
+            """UPDATE auth_sessions SET access_token=%s, refresh_token=%s, expires_at=%s WHERE id=%s""",
             (payload["access_token"], payload["refresh_token"],
-             time.time() + payload.get("expires_in", 3600), _assigned_patients(payload), demo_patient(payload.get("user")), session_id),
+             time.time() + payload.get("expires_in", 3600), session_id),
         )
         return dict(conn.execute("SELECT * FROM auth_sessions WHERE id=%s", (session_id,)).fetchone())
 

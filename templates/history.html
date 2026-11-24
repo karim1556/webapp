@@ -5,15 +5,15 @@
 <header class="page-header">
   <div>
     <p class="eyebrow">{{ 'Expert Dashboard' if expert_subject else 'Wearable workspace' }}</p>
-    <h1 class="page-title">{{ 'Patient ' ~ archive_profile.patient_id if expert_subject else 'Signal history' }}</h1>
+    <h1 class="page-title">{{ expert_patient.username if expert_patient else ('Patient ' ~ archive_profile.patient_id if expert_subject else 'Signal history') }}</h1>
     {% if archive_profile %}
     <p class="page-sub">{{ 'Archived recordings' if expert_subject else 'Patient ' ~ archive_profile.patient_id }}{% if archive_profile.profile.birth_year is defined %} · {{ archive_profile.profile.sex }} · Born {{ archive_profile.profile.birth_year }}{% endif %}</p>
     {% else %}
-    <p class="page-sub">Received measurements for {{ current_user.device_id or 'your selected wearable' }}.</p>
+    <p class="page-sub">Received measurements for {{ history_device or current_user.device_id or 'your selected wearable' }}.</p>
     {% endif %}
   </div>
   <div class="header-right">
-    {% if expert_subject %}<a class="btn btn-ghost" href="{{ url_for('dashboard.doctor_page') }}">All assigned patients</a>{% endif %}
+    {% if expert_subject %}<a class="btn btn-ghost" href="{{ url_for('dashboard.doctor_page') }}">All patients</a>{% endif %}
     <a class="btn btn-ghost" id="historyExport" href="{{ history_export_url }}" data-history-api="{{ history_api }}" data-sign-in="{{ url_for('auth.doctor_login' if expert_subject else 'auth.login', next=request.path) }}">Download CSV</a>
     <button class="btn btn-secondary" id="historyRefresh" type="button">Refresh readings</button>
   </div>

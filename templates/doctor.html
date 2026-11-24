@@ -3,8 +3,13 @@
 {% block content %}
 <header class="page-header">
   <div>{% if patient %}<p class="eyebrow">Expert Dashboard</p>{% endif %}<h1 class="page-title">{{ patient.username if patient else 'Expert Dashboard' }}</h1>
-  <p class="page-sub">{{ ('Wearable ' ~ device_id ~ ' · Last 30 days') if patient else 'Review recordings for your assigned patients.' }}</p></div>
-  {% if patient %}<a class="btn btn-ghost" href="{{ url_for('dashboard.doctor_page') }}">All assigned patients</a>{% endif %}
+  <p class="page-sub">{{ ('Wearable ' ~ device_id ~ ' · Last 30 days') if patient else 'Review patient accounts and recordings.' }}</p></div>
+  {% if patient %}
+  <div class="header-right">
+    <a class="btn btn-ghost" href="{{ url_for('dashboard.doctor_page') }}">All patients</a>
+    <a class="btn btn-primary" href="{{ url_for('dashboard.expert_history_page', subject=subject) }}">Signal History</a>
+  </div>
+  {% endif %}
 </header>
 {% if patient %}
 <section class="chart-card review-section">
@@ -53,17 +58,18 @@
   <article class="chart-card review-section">
     <h2 class="chart-title">Patient {{ entry.patient_id }}</h2>
     <p class="page-sub">{{ entry.profile.sex }} · Born {{ entry.profile.birth_year }} · {{ "{:,}".format(entry.sample_count) }} readings</p>
-    <a class="auth-link" href="{{ url_for('dashboard.doctor_patient', subject=entry.subject) }}">View {{ entry.patient_id }} recordings →</a>
+    <a class="auth-link" href="{{ url_for('dashboard.doctor_patient', subject=entry.owner_id) }}">View {{ entry.patient_id }} recordings →</a>
   </article>
   {% endfor %}
 </section>
 {% endif %}
 {% if patients or not archive_patients %}
 <section class="chart-card review-section">
+  <h2 class="chart-title">Patient accounts</h2>
   {% for entry in patients %}
   <div class="review-entry"><a class="auth-link" href="{{ url_for('dashboard.doctor_patient', subject=entry.supabase_id) }}">{{ entry.username }} →</a></div>
   {% else %}
-  <p class="page-sub">No patient records are assigned to this account yet.</p>
+  <p class="page-sub">No patient accounts are available yet.</p>
   {% endfor %}
 </section>
 {% endif %}
