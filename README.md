@@ -13,8 +13,10 @@ Open [Neurosync AI](http://127.0.0.1:5000) and sign in with a Supabase Auth acco
 | --- | --- |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_PUBLIC_KEY` | Supabase publishable key or legacy anon key |
+| `SUPABASE_DB_URL` | Server-only Postgres connection string for profiles, sessions, and diaries |
+| `SUPABASE_ADMIN_KEY` | Server-only secret for reviewing assigned archived patients |
 | `SECRET_KEY` | Stable random Flask signing key |
-| `PHANTOMLIMB_ORIGIN` | App origin used in confirmation and reset links. Required when serving outside localhost. |
+| `PHANTOMLIMB_ORIGIN` | App origin used in confirmation and reset links. Defaults to Render's external URL on Render. |
 | `PHANTOMLIMB_DEFAULT_DEVICE` | Initial device selection for new profiles. Defaults to `C6525`. |
 
 In Supabase **Authentication → URL Configuration**, allow both callbacks for your app origin. For the development server they are:
@@ -24,7 +26,14 @@ In Supabase **Authentication → URL Configuration**, allow both callbacks for y
 
 Use the same origin in the browser and in the allowlist. If you open the app through `localhost`, allow the two callbacks for that host as well. Keep `{{ .ConfirmationURL }}` in the Supabase confirmation and recovery email templates. Open links in the browser that started the request. Supabase sends the messages using the project's configured mail provider. [Supabase PKCE flow](https://supabase.com/docs/guides/auth/sessions/pkce-flow)
 
-The dashboard, signal history, and sensor summaries fetch readings from `public.phantom_limb_telemetry`. The patient diary and archived web button events use local SQLite. A confirmed Supabase account with the same email links to the corresponding existing local diary. The local database is migrated at startup.
+The dashboard, signal history, and sensor summaries fetch readings from `public.phantom_limb_telemetry`. Accounts, server-side sessions, device selections, diaries, and older button events use the private `neurosync_app` schema in Supabase Postgres.
+
+## Supabase storage and Render
+
+1. Run [supabase_app_storage.sql](supabase_app_storage.sql) in the Supabase SQL Editor. Copy the project's Session pooler connection string from **Connect** into the server's `SUPABASE_DB_URL` and set its database password. Keep the connection string and keys in the server environment or private `.env`.
+2. To carry over existing records, run `python migrate_local_storage.py ae490.db` before signing in on the new backend. This copies profiles and legacy records into an empty application schema in a single transaction. Existing sign-in tokens are excluded, so users sign in again.
+3. Connect this repository in Render as a Blueprint. [render.yaml](render.yaml) configures Gunicorn, Python 3.12, and the database health check. Supply the Supabase secrets when Render asks for them.
+4. In Supabase Authentication, allow the Render site's `/auth/callback/signup` and `/auth/callback/recover` URLs for registration and password recovery.
 
 ## Restricting telemetry reads
 
@@ -57,7 +66,7 @@ A Supabase administrator sets expert roles and patient assignments in the accoun
 }
 ```
 
-For live devices, the patient must have signed in once to link their local diary account. Grant the expert’s Auth UUID access through the Supabase device policy above. For archived patient IDs P001–P003, the Flask server checks the assignment against the archive owner before reading from the two archive tables. Set `SUPABASE_ADMIN_KEY` in the server environment or private local `.env` to enable those expert archive reads. Keep this key on the server and out of distributed desktop builds. Have experts sign back in after editing a role or assignment. [Supabase guidance on trusted app metadata](https://supabase.com/docs/guides/database/postgres/row-level-security#authjwt)
+For live devices, the patient must have signed in once to link their diary. Grant the expert’s Auth UUID access through the Supabase device policy above. For archived patient IDs P001–P003, the Flask server checks the assignment against the archive owner before reading from the two archive tables. Set `SUPABASE_ADMIN_KEY` in the server environment or private local `.env` to enable those expert archive reads. Keep the admin and Postgres credentials on the server. Have experts sign back in after editing a role or assignment. [Supabase guidance on trusted app metadata](https://supabase.com/docs/guides/database/postgres/row-level-security#authjwt)
 
 ## Synthetic patient archive
 

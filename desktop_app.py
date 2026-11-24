@@ -14,7 +14,6 @@ if getattr(sys, 'frozen', False):
 sys.path.insert(0, BASE_DIR)
 
 import config
-import database as db
 from app import create_app
 
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +22,7 @@ _instance_lock = None
 
 def acquire_single_instance() -> bool:
     global _instance_lock
-    lock_path = os.path.join(os.path.dirname(config.DB_PATH), 'PhantomLimb.lock')
+    lock_path = os.path.join(config.APP_STORAGE, 'PhantomLimb.lock')
     try:
         lock_file = open(lock_path, 'a+')
         if os.name == 'nt':

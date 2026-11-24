@@ -1,8 +1,6 @@
 from contextlib import ExitStack
-import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from unittest.mock import patch
 
 from app import create_app
@@ -12,8 +10,6 @@ class LiveFreshnessTests(unittest.TestCase):
     def setUp(self):
         contexts = ExitStack()
         self.addCleanup(contexts.close)
-        directory = contexts.enter_context(tempfile.TemporaryDirectory())
-        contexts.enter_context(patch("database.DB_PATH", str(Path(directory) / "test.db")))
         self.client = create_app().test_client()
         self.auth = contexts.enter_context(patch("app.session_record", return_value={
             "user_id": 1, "assigned_patients": None, "demo_patient_id": None,

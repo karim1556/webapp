@@ -13,7 +13,7 @@ a = Analysis(
     hiddenimports=[
         'sklearn.base', 'sklearn.ensemble._forest', 'sklearn.preprocessing._data',
         'sklearn.tree._tree', 'sklearn.utils', 'joblib', 'flask_login',
-        'requests', 'sqlite3', 'numpy',
+        'requests', 'numpy', 'psycopg_binary',
     ],
     hookspath=[],
     hooksconfig={},

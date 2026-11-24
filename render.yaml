@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: neurosync-ai
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 'app:create_app()'
+    healthCheckPath: /healthz
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SUPABASE_URL
+        value: https://utocjwqcwfqaovvlhsgx.supabase.co
+      - key: SUPABASE_PUBLIC_KEY
+        sync: false
+      - key: SUPABASE_ADMIN_KEY
+        sync: false
+      - key: SUPABASE_DB_URL
+        sync: false

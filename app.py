@@ -4,9 +4,11 @@ import json
 import os
 import secrets
 from datetime import timedelta
+from contextlib import closing
 
 from flask import Flask, abort, g, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from flask_login import LoginManager
+from psycopg import Error as PostgresError
 
 import config
 import database as db
@@ -32,8 +34,14 @@ def create_app():
         PUBLIC_ORIGIN=config.PUBLIC_ORIGIN,
         DEFAULT_DEVICE=config.DEFAULT_DEVICE,
     )
-    db.init_db()
     login_manager = LoginManager(app)
+
+    @app.errorhandler(PostgresError)
+    def database_unavailable(error):
+        app.logger.error("Supabase Postgres operation failed (%s)", type(error).__name__)
+        if request.path.startswith("/api/") or request.path.endswith("/recordings"):
+            return jsonify(status="unavailable", message="Database temporarily unavailable."), 503
+        return "Database temporarily unavailable.", 503
 
     @login_manager.request_loader
     def load_user(_request):
@@ -79,6 +87,12 @@ def create_app():
     @app.get("/")
     def root():
         return render_template("landing.html")
+
+    @app.get("/healthz")
+    def healthz():
+        with closing(db.get_db()) as conn:
+            conn.execute("SELECT id FROM auth_sessions LIMIT 0")
+        return jsonify(status="ok")
 
     @app.get("/manifest.json")
     def manifest():
